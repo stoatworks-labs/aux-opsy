@@ -10,9 +10,14 @@
   "name": "aux-opsy",
   "compatibility_date": "2026-07-30",
 
-  // Custom domain, created straight from here — DNS record and certificate appear
-  // within seconds, no dashboard needed.
-  "routes": [{ "pattern": "aux-opsy.com", "custom_domain": true }],
+  // Custom domains, created straight from here — DNS records and certificates
+  // appear within seconds, no dashboard needed. www serves the same content
+  // rather than redirecting; the canonical tags all point at the apex, so search
+  // engines still treat the apex as the single address.
+  "routes": [
+    { "pattern": "aux-opsy.com", "custom_domain": true },
+    { "pattern": "www.aux-opsy.com", "custom_domain": true }
+  ],
 
   // MUST stay explicitly true. wrangler silently flips this to false as soon as
   // `routes` exists, which takes the workers.dev URL offline and 404s every
