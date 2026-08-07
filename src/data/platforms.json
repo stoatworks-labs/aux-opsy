@@ -198,6 +198,171 @@
     },
 
     {
+      "id": "midas-hd96",
+      "manufacturer": "Midas",
+      "model": "HD96",
+      "family": "HERITAGE-D / HD series",
+      "class": "Digital mixing console",
+      "introduced": 2021,
+      "status": "documented",
+      "tags": [
+        "Linux (Jetson TK1)",
+        "Spartan-6 mixing",
+        "Protobuf control bus",
+        "AES50",
+        "No image encryption"
+      ],
+      "summary": "The one console examined whose control plane is wide open: a full Linux computer speaking documented Thrift and Protobuf. The mixer still lives in FPGA fabric — but the bitstreams ship in the clear and the exact parts are known.",
+      "headline": "Three stacked computers: a Jetson TK1 runs the GUI and the control protocols, an ARM920T card runs the mixer, and the mixing itself is an unencrypted Spartan-6 bitstream that ships inside the update.",
+      "method": "Static analysis of the public 2.4.0 firmware bundle — a signed APT repository plus Yocto board images. No hardware was inspected. The bundle was retained, so every claim here re-derives from it. Two protocol schemas were recovered whole: the Thrift RPC from shipped generated Python, the Protobuf bus from descriptors embedded in a shared library.",
+      "artifacts": [
+        "hd96_2.4.0+sumo.329.tar — VERSION/WHATSNEW/CHECKSUMS(.asc), repo.tar (APT repo, 108 debs), mghd271-tk1-*.tar.gz (Yocto images)",
+        "libPufferfishCore.so — embeds all 13 control-bus FileDescriptorProtos",
+        "as88_hmac.bin / as88_smac.bin — the mix-engine FPGA bitstreams, shipped inside mkt-as88"
+      ],
+      "hardware": [
+        {
+          "label": "Host SoC",
+          "value": "NVIDIA Tegra124 (Jetson TK1), quad Cortex-A15 — from the device tree compatible = \"nvidia,jetson-tk1\",\"nvidia,tegra124\" and the armhf package architecture",
+          "confidence": "verified"
+        },
+        {
+          "label": "Host DRAM",
+          "value": "2 GB — the DT memory node is reg = <0x80000000 0x80000000>. A 4 GB boot-config (bct_hyinx_4gb) also ships, so a 4 GB surface variant exists",
+          "confidence": "verified"
+        },
+        {
+          "label": "Mix-engine card (AS88)",
+          "value": "A separate board hosting the mixer: an ARM920T running a Buildroot 2013.08 / uClibc Linux under the RedBoot bootloader, from 32 MB of NOR flash mapped at 0x60000000. Build path KES-BR14-ARM920T, RedBoot FIS table intact",
+          "confidence": "verified"
+        },
+        {
+          "label": "Mixing FPGA (HMAC)",
+          "value": "Xilinx Spartan-6 XC6SLX100 — proven from the bitstream's own IDCODE register write (0x04011093) in as88_hmac.bin, not inferred",
+          "confidence": "verified"
+        },
+        {
+          "label": "AES50 SuperMAC FPGA (SMAC)",
+          "value": "Xilinx Spartan-6 XC6SLX150 — IDCODE 0x0401D093 in as88_smac.bin. This is the Klark Teknik SuperMAC/HyperMAC AES50 fabric",
+          "confidence": "verified"
+        },
+        {
+          "label": "Host-side FPGAs",
+          "value": "Routing and IO on the TK1 side: mkt-fpga-{io,io2,ve,ctrl,hd272-ctrl,hd272-audio} plus expansion-card ASRC/AES50 images, flashed by mkt-fpga",
+          "confidence": "verified"
+        },
+        {
+          "label": "FX DSPs",
+          "value": "An Analog-Devices-SHARC-family DSP subsystem reached through /dev/dayak; 63 effects ship as loadable *_MultiApp DSP images. Part not pinned — inferred from ADSP- strings and the loader format",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Ethernet switch",
+          "value": "Marvell mv88e6096 managed switch, configured over memory-mapped IO-FPGA access (mkt-hd271-switch-config)",
+          "confidence": "verified"
+        },
+        {
+          "label": "Expansion / STM32",
+          "value": "An STM32 “HD271C” expansion-card handler (mkt-hermes) drives AES50 option cards and DP48 stageboxes; IO boxes are controlled in-band over the AES50 port (HardwareControlOverAesPort)",
+          "confidence": "verified"
+        }
+      ],
+      "software": [
+        {
+          "label": "Host OS",
+          "value": "Full embedded Linux — Yocto “sumo”, ID=hd271dist 2.20.1, kernel 3.10.40, u-boot 2014.10. Not bare metal",
+          "confidence": "verified"
+        },
+        {
+          "label": "Application layer",
+          "value": "A signed APT repository of 108 packages (57 first-party mkt-*) layered on the Yocto rootfs; mkt-heritage is the top-level that pulls in the whole console",
+          "confidence": "verified"
+        },
+        {
+          "label": "GUI",
+          "value": "squig — a CEF/Chromium-backed application (cef-runtime 3770), run as offlinesquig … --allowRemoteClients true",
+          "confidence": "verified"
+        },
+        {
+          "label": "Control bus",
+          "value": "pufferfish — Protobuf over ZMQ/TCP on port 9990, advertised over mDNS as “HD96Control”. The complete proto3 schema (13 files, namespace serialisation) was recovered from embedded descriptors",
+          "confidence": "verified"
+        },
+        {
+          "label": "Parameter model",
+          "value": "A string-key + category addressed tree: ParameterRequest{subscribe|unsubscribe; identifier{category|key}} → ParameterEvent{Parameter{key,value,categories}}, values a 10-arm ConsoleValue union. Show control is a 41-verb AutomationEvent enum (recall / store / loadShow / fireEvent / import·exportShow)",
+          "confidence": "verified"
+        },
+        {
+          "label": "Test RPC",
+          "value": "razorbill — Apache Thrift on port 9094, three privilege tiers up to a 60-method development interface (SetParameterValue, Screenshot, InstallPackage, Reboot, user-DB inject/wipe). The IDL was read back from shipped generated Python",
+          "confidence": "verified"
+        },
+        {
+          "label": "Surface variants",
+          "value": "HD96-16, HD96-24 and HD96 Air, six surface bays and dual mix engines (HMAC1/HMAC2) — leaked verbatim by the DebugEvent enum (surfaceConfigHd96_16_revA, _24_revD, _Air_revA)",
+          "confidence": "verified"
+        }
+      ],
+      "security": [
+        {
+          "label": "Package trust",
+          "value": "The update is a GPG-signed APT repo (Origin “Music Group Research UK”) with a SHA-256 CHECKSUMS manifest and a detached PGP signature over it. Package-level integrity, not silicon secure boot",
+          "confidence": "verified"
+        },
+        {
+          "label": "Mixing bitstream encryption",
+          "value": "None. Both Spartan-6 bitstreams ship unencrypted — the AA·99·55·66 sync word is in the clear and there is no key-load sequence. They are byte-bit-reversed for flash storage, nothing more",
+          "confidence": "verified"
+        },
+        {
+          "label": "Host secure boot",
+          "value": "No evidence of fused Tegra secure boot. u-boot carries the Tegra bootsecure/BCT infrastructure, but nothing indicates the fuses are burned on shipping hardware",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Control-plane auth",
+          "value": "None observed. razorbill Thrift is a plain TBinaryProtocol server with no authentication; squig runs with --allowRemoteClients true. Whether 9990/9094 bind off-box on a shipping desk is unconfirmed",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Entitlement",
+          "value": "A device-uniqueness / licensing mechanism exists (mkt-uniqueness, the mCloud proxy). Its content was not analysed — see the methodology page",
+          "confidence": "verified"
+        }
+      ],
+      "programmable": [
+        {
+          "rank": 1,
+          "item": "Interoperability via the recovered protocols",
+          "note": "pufferfish (Protobuf, :9990) is a live parameter/metering bus and razorbill (Thrift, :9094) a full control RPC. Both schemas are recovered. This is a console you can speak to today, and it is where the value is."
+        },
+        {
+          "rank": 2,
+          "item": "The Spartan-6 mixing fabric",
+          "note": "Unencrypted and identified (XC6SLX100 / XC6SLX150), so analysable with Project X-Ray. But replacing it means writing a mix engine against an unpublished pinout and an ARM920T host interface."
+        },
+        {
+          "rank": 3,
+          "item": "Rehost the Jetson TK1",
+          "note": "Trivially Linux-friendly — but replacing the TK1 software leaves you wired to the same engine cards, which is the part that actually mixes. It buys nothing, exactly as on the SQ-5."
+        }
+      ],
+      "verdict": "The most open console examined. The mixer still lives in FPGA fabric, as on the SQ-5 — but here the bitstreams ship in the clear, the exact Spartan-6 parts are known from their IDCODEs, and, unlike the SQ, the entire control plane is documented RPC you can speak now. The value is interop, and it is unusually reachable; rehosting remains pointless for the same reason it was on the SQ.",
+      "openQuestions": [
+        "Do ports 9990 and 9094 bind off-box on a shipping desk, and is the Protobuf bus authenticated? The mDNS advert and --allowRemoteClients true suggest reachable, but this was never tested on hardware.",
+        "The parameter key/category namespace — the actual channel/bus/FX addressing — is the last missing piece for real show control, and needs a live console to enumerate.",
+        "The register/AXI interface between the ARM920T host and the HMAC Spartan-6 is undocumented — the same black box the SQ-5 has, one layer down.",
+        "The exact SHARC part and the _MultiApp DSP loader format are unexamined."
+      ],
+      "traps": [
+        "Two unrelated “HMAC”: the Midas mix-engine path, and hmac-md5/hmac-sha crypto strings in the AS88 rootfs. They are not related.",
+        "The FPGA bitstreams are byte-bit-reversed for flash, so a naive search for the AA·99·55·66 sync word fails until each byte is reversed.",
+        "The embedded Protobuf descriptors cannot be carved by binary-searching the length — descriptor validity is not monotonic. A field-by-field wire-format walk is required to find each descriptor's exact end."
+      ]
+    },
+
+    {
       "id": "behringer-wing-compact",
       "manufacturer": "Behringer",
       "model": "WING Compact",
