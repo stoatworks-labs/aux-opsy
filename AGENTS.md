@@ -12,9 +12,11 @@ Read this before editing. See `README.md` for what the project *is*.
   browser and produce correct results — including the year sort parking the undated entry
   (LOOM) last in both directions.
 - Light and dark both render correctly, with the navy band surviving in light mode.
-- **Live at `https://aux-opsy.com`**, deployed as a Cloudflare Worker serving static assets
-  (not a Pages project — the fleet has none). Public repo at
+- **Live at `https://aux-opsy.com`** (and `www.`), deployed as a Cloudflare Worker serving
+  static assets (not a Pages project — the fleet has none). Public repo at
   `github.com/stoatworks-labs/aux-opsy`.
+- Discovery stack verified live: `/robots.txt` with content signals, `/sitemap-index.xml`
+  (13 URLs, 404 excluded), `/llms.txt`, and JSON-LD on every page.
 
 **Assumed / not verified:**
 
@@ -70,6 +72,20 @@ would destroy the site. The nominative-use position is stated on `/method/#trade
   preview config is named `aux-opsy` on port 4531 and is already registered there.
 - **`year: 0` means "no meaningful date"**, used for our own design. Both year sorters special-
   case it so it parks last rather than sorting as the year zero. Don't "simplify" that away.
+- **Every deploy lies for one to two minutes afterwards, and the lie looks like a bug.**
+  Freshly-uploaded paths return 404 — or, right after a custom domain is attached, `500` —
+  moving to a *different* path on each pass. It settles on its own. Never diagnose from one
+  pass, and never check status and body in separate curls: they are two requests and can hit
+  different edge states, producing a "404 with the correct title" that is pure artefact.
+- **`grep -c` on `robots.txt` returned 0 while `grep -E` on the same file printed matches** —
+  same cause, two separate requests. One request per assertion.
+- **Do not round-trip `platforms.json` through `json.dumps`.** The file is hand-formatted:
+  table rows are one object per line and `tags` arrays are inline. A reformat produced a
+  648-line diff that would have collided head-on with a co-session. Edit it as text, scoped to
+  the entry's line range, or make the change by hand.
+- **`<script type="application/ld+json" set:html={...} />`** is the working form. A
+  `<set:html value={...} />` element is not Astro syntax, and an HTML comment inside a
+  `{list.map(...)}` block is a compiler error — use `{/* */}` outside the map.
 
 ## Style
 
