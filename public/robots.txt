@@ -1,0 +1,45 @@
+# Cloudflare APPENDS its managed content-signals preamble to this file rather than
+# replacing it. Before this file existed the site served that preamble ALONE, with no
+# signals at all — and under the preamble's own clause (c) a use with no signal is
+# neither granted nor restricted, i.e. the site was silent about AI use rather than
+# permitting it. The signals below are what make the position explicit.
+#
+# This is research meant to be read, quoted and corrected. All three uses are granted.
+#
+# NOTE: a named User-agent group REPLACES "User-agent: *" for that crawler, it does not
+# add to it. Every named group therefore repeats the same three signals verbatim.
+# Edit one, edit all of them, or that crawler silently falls back to "unstated".
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: *
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Googlebot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: bingbot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: ClaudeBot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: GPTBot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: OAI-SearchBot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: PerplexityBot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: CCBot
+Allow: /
+
+Sitemap: https://aux-opsy.com/sitemap-index.xml

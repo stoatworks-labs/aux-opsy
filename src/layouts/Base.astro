@@ -6,11 +6,40 @@ interface Props {
   description: string;
   /** Nav key so the header can mark the current section. */
   section?: 'home' | 'platforms' | 'method';
+  /** Extra schema.org nodes merged into the page's @graph. */
+  schema?: Record<string, unknown>[];
 }
 
-const { title, description, section } = Astro.props;
+const { title, description, section, schema = [] } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const site = Astro.site!.href.replace(/\/$/, '');
 const year = new Date().getFullYear();
+
+// One @graph per page. A bare array of @type objects is valid JSON and means
+// nothing to every consumer — the @context wrapper is what makes it readable,
+// and cross-node @id references only resolve inside a graph.
+const jsonld = {
+  '@context': 'https://schema.org',
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${site}/#organization`,
+      name: 'Stoatworks Labs',
+      url: 'https://stoatworks-labs.com',
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${site}/#website`,
+      url: `${site}/`,
+      name: 'Aux-opsy',
+      description:
+        'Independent reverse-engineering research into the hardware and software architecture of digital mixing consoles.',
+      publisher: { '@id': `${site}/#organization` },
+      inLanguage: 'en-GB',
+    },
+    ...schema,
+  ],
+};
 ---
 <!-- Astro renders the document shell; this layout owns head + chrome. -->
 <html lang="en">
@@ -27,6 +56,7 @@ const year = new Date().getFullYear();
     <meta name="twitter:card" content="summary" />
     <meta name="robots" content="index, follow" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
