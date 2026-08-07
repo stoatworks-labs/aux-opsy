@@ -1,4 +1,4 @@
-# AGENTS.md — console-internals
+# AGENTS.md — aux-opsy
 
 Conventions and hard-won facts for anyone (human or agent) working in this repo.
 Read this before editing. See `README.md` for what the project *is*.
@@ -7,19 +7,23 @@ Read this before editing. See `README.md` for what the project *is*.
 
 **Verified in this repo:**
 
-- The site builds clean (13 pages) and every route renders.
+- The site builds clean (14 pages) and every route renders.
 - Search, status filter, class filter and all six sort orders were exercised in a real
   browser and produce correct results — including the year sort parking the undated entry
   (LOOM) last in both directions.
 - Light and dark both render correctly, with the navy band surviving in light mode.
+- **Live at `https://aux-opsy.com`**, deployed as a Cloudflare Worker serving static assets
+  (not a Pages project — the fleet has none). Public repo at
+  `github.com/stoatworks-labs/aux-opsy`.
 
 **Assumed / not verified:**
 
-- **The technical content.** It is a curated rendering of five private research repos. It was
+- **The technical content.** It is a curated rendering of the private research repos. It was
   transcribed faithfully, but no claim here has been independently re-derived, and the
   research itself is largely unverified against hardware — which the site says on every page.
-- **Deployment.** Nothing has been deployed. There is no domain, no Cloudflare Worker and no
-  GitHub remote yet.
+- **Auto-deploy from GitHub.** Not wired up. Connecting a repo as a Worker's build source
+  needs the Cloudflare dashboard; the API token gets 403 on `/accounts/{id}/builds/*`. Every
+  deploy is currently a manual `cf-run npm run deploy`.
 
 ## The single source of truth
 
@@ -63,7 +67,7 @@ would destroy the site. The nominative-use position is stated on `/method/#trade
 - **`astro preview` dies when `dist/` is rebuilt under it.** The symptom is
   ERR_CONNECTION_REFUSED, not a bad page. Restart the preview after a build.
 - **The launcher reads `~/.claude/launch.json`, not the repo's `.claude/launch.json`.** The
-  preview config is named `console-internals` on port 4531 and is already registered there.
+  preview config is named `aux-opsy` on port 4531 and is already registered there.
 - **`year: 0` means "no meaningful date"**, used for our own design. Both year sorters special-
   case it so it parks last rather than sorting as the year zero. Don't "simplify" that away.
 

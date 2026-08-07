@@ -1,4 +1,4 @@
-# Console Internals
+# Aux-opsy
 
 > **AI-assisted project.** This codebase was created with [Claude Code](https://claude.com/claude-code).
 > The site builds and every page has been rendered and checked in a browser; the *technical
@@ -65,13 +65,13 @@ npm install
 npm run dev      # or: npm run build && npm run preview
 ```
 
-A preview config named `console-internals` on port 4531 is registered in
+A preview config named `aux-opsy` on port 4531 is registered in
 `~/.claude/launch.json`.
 
 ## Source repositories
 
-The underlying research lives in private repositories — `yamaha-ql-re`, `sq5-re`, `wing-os`,
-`soundgrid-protocol`, `dmix-surface` and `loom`. This site is a curated public rendering of
+The underlying research lives in private repositories — `yamaha-ql-re`, `sq5-re`, `hd96-re`,
+`wing-os`, `soundgrid-protocol`, `dmix-surface` and `loom`. This site is a curated public rendering of
 that work, not a mirror of it. When a finding changes there, it does **not** propagate here
 automatically; `platforms.json` is hand-maintained on purpose, the same way the main site's
 `projects.json` is.

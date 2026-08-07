@@ -5,15 +5,18 @@
   // `dist`; note that `pages_build_output_dir` in a Worker repo fails with a
   // misleading "could not detect a directory containing static files".
   //
-  // Deploy:  npm run build && cf-run npx wrangler deploy
+  // Deploy:  cf-run npm run deploy
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "console-internals",
+  "name": "aux-opsy",
   "compatibility_date": "2026-07-30",
 
-  // Kept explicitly true so that attaching a custom domain later does not
-  // silently take the workers.dev URL offline — wrangler defaults this to false
-  // as soon as `routes` exists, and every published link to the old host 404s
-  // from that deploy on.
+  // Custom domain, created straight from here — DNS record and certificate appear
+  // within seconds, no dashboard needed.
+  "routes": [{ "pattern": "aux-opsy.com", "custom_domain": true }],
+
+  // MUST stay explicitly true. wrangler silently flips this to false as soon as
+  // `routes` exists, which takes the workers.dev URL offline and 404s every
+  // published link to it from that deploy on.
   "workers_dev": true,
 
   "assets": {
