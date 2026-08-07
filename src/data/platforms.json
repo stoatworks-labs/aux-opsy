@@ -1,0 +1,433 @@
+{
+  "confidence": {
+    "verified": {
+      "label": "Verified",
+      "note": "Read directly from an artifact — a constant in a disassembly, a literal in a script, a symbol in a table, a part number in a service manual. Not dependent on interpretation."
+    },
+    "inferred": {
+      "label": "Inferred",
+      "note": "A reading of verified evidence that is well supported but not directly stated. The reasoning is given, and so are the competing readings."
+    },
+    "unknown": {
+      "label": "Unknown",
+      "note": "The artifacts show it exists, but its content, layout or semantics have not been determined."
+    },
+    "public": {
+      "label": "Public",
+      "note": "Taken from a datasheet, standard, service manual or the manufacturer's own published documentation. No analysis was needed."
+    }
+  },
+
+  "statuses": [
+    { "id": "documented", "label": "Documented", "note": "A written teardown exists and its claims carry evidence citations." },
+    { "id": "partial", "label": "Partial", "note": "Substantial findings recorded, but whole subsystems remain unexamined." },
+    { "id": "active", "label": "Active", "note": "Work in progress; the hardware inventory is not yet confirmed against a bench." },
+    { "id": "reference", "label": "Reference design", "note": "Not a teardown — our own open design, included as the contrast case the teardowns keep pointing at." },
+    { "id": "candidate", "label": "Candidate", "note": "Named in existing work only as a comparison point. No analysis has been performed." }
+  ],
+
+  "platforms": [
+    {
+      "id": "yamaha-ql1",
+      "manufacturer": "Yamaha",
+      "model": "QL1",
+      "family": "QL series (CL/QL, codename \"Lime\")",
+      "class": "Digital mixing console",
+      "introduced": 2014,
+      "status": "documented",
+      "tags": ["Fixed-function DSP", "µITRON", "SH-4A", "Dante", "SHARC"],
+      "summary": "A nine-processor console whose mixing DSPs have no instruction memory at all — the audio path is fixed-function silicon configured through a register file.",
+      "headline": "The five YSS919C \"DSP7\" mixing chips expose a 512-word register file and no program port. This was proven not just from the pin tables but from absence: every region of the 64 MB flash is accounted for and there is no DSP7 program image anywhere in it.",
+      "method": "Static analysis of the V5.91 USB firmware update package, cross-referenced against the published service manual's LSI pin descriptions. No console was involved and no hardware was inspected.",
+      "artifacts": [
+        "`MQLP5_91.PGM` — 27.5 MB main-CPU image (console application + GUI resource pack)",
+        "`QL-MD103.BIN` — 110 KB channel-name display sub-MCU image",
+        "`FWUpdate_QL1_v4020401_sw310.dnt` — 4.7 MB Audinate Brooklyn II package",
+        "Service manual, LSI PIN DESCRIPTION section",
+        "`QL Editor.app` — Premium Rack plugins shipped as unstripped x86_64 dylibs"
+      ],
+      "hardware": [
+        { "label": "Main CPU", "value": "Renesas R8A77240D500BG — an SH7724 (SH-4A, SH-Mobile R2R) at IC101", "confidence": "verified" },
+        { "label": "Mixing DSP", "value": "5 × Yamaha YSS919C-FZ \"DSP7\" (IC251/252/255/256/257). QL5 fits 7", "confidence": "verified" },
+        { "label": "Effects DSP", "value": "4 × Yamaha YSS910C-VZ \"DSP6\" (IC201–204)", "confidence": "verified" },
+        { "label": "Premium Rack DSP", "value": "Analog Devices ADSP-21369KBPZ-3A SHARC — JTAG header fitted on the board", "confidence": "verified" },
+        { "label": "Codec DSP", "value": "TI TMS320DA150PGE16D (C54x-class) at IC552", "confidence": "verified" },
+        { "label": "FPGA", "value": "Altera Cyclone IV E EP4CE15F23C8N (IC152) — audio crossbar and master clock system", "confidence": "verified" },
+        { "label": "DSP7 interconnect", "value": "SIO00–SIO63 — 64 bidirectional serial lines, MCKS at 128 × Fs, own SDRAM per chip", "confidence": "verified" },
+        { "label": "Network", "value": "Marvell 88E6350R L2 switch, DM9000AEP MAC, KSZ8051RNL PHY", "confidence": "verified" },
+        { "label": "Converters", "value": "AK5385B ADC / AK4396 DAC / AK4125 SRC; CS8406 AES/EBU transmitter", "confidence": "verified" },
+        { "label": "Storage", "value": "NOR flash (AMD/Spansion command set, 16- and 32-bit bus variants), battery-backed SRAM for scenes, SDRAM", "confidence": "verified" },
+        { "label": "Panel MCUs", "value": "LPC1763 Cortex-M3, M38039-family 8-bit MCUs, HD6433683E H8/300H", "confidence": "verified" },
+        { "label": "Audio networking", "value": "Audinate Brooklyn II module over MSIOF", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "Renesas HI7000/4-family µITRON 4.0 kernel. No Linux anywhere", "confidence": "verified" },
+        { "label": "Image load base", "value": "0x8803BF80 — P1 space, so physical 0x0803BF80 = SDRAM + 0x3BF80. The image is placed in RAM by a bootloader not present in the .PGM", "confidence": "verified" },
+        { "label": "Code volume", "value": "≈7 MB of SH-4A little-endian machine code; the remainder is GUI resources", "confidence": "verified" },
+        { "label": "Task model", "value": "~130 named µITRON objects across kernel, panel bus, display, mix engine, Premium Rack, MIDI, Dante, network, L2 switch and remote control", "confidence": "verified" },
+        { "label": "Debug facilities", "value": "Live serial debug monitor (task/sema/flag/mbox/mpl/mbf commands) plus Hitachi DT10 trace instrumentation still present in shipping firmware", "confidence": "verified" },
+        { "label": "Plugin ABI", "value": "Premium Rack plugins export `createPerseusPlugin_203` — the identical symbol appears in the console firmware (`-sh4a-per`) and in the macOS editor's dylibs (`-mac-per`)", "confidence": "verified" },
+        { "label": "Console plugin linkage", "value": "Statically linked into the main firmware image, not shipped as separate files", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Image signing", "value": "None found", "confidence": "inferred" },
+        { "label": "Encryption", "value": "None — the package is plainly structured and its components are directly readable", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Mini-YGDAI slot card", "note": "The cheapest route to putting custom DSP in the audio path with no console modification at all. Host aperture 0xBA002000 + (slot << 11), 16-bit port on A10..A1." },
+        { "rank": 2, "item": "EP4CE15 patch FPGA (IC451)", "note": "The audio crossbar between Dante, every DSP7, the SHARC, the DSP6 bank and both slots. JTAG header present, and it is configurable from the CPU. Highest leverage, least investigated." },
+        { "rank": 3, "item": "ADSP-21369 SHARC (FX IC101)", "note": "The Premium Rack engine. A documented part, SPI-slave boot, JTAG header already fitted. Eight stereo slots means up to 16 mono inserts, patchable from the console's own UI. The one place third-party code could plausibly run." }
+      ],
+      "verdict": "The mixing engine is closed by construction rather than by policy — there is no software on it to replace. The programmable surface is real but sits alongside the mix engine, not inside it.",
+      "openQuestions": [
+        "The patch FPGA's configuration path from the CPU has not been traced.",
+        "The DSP7 register-file semantics are undocumented; only the bus interface is known.",
+        "No claim here has been checked against a physical QL console."
+      ],
+      "traps": [
+        "The image load base is 0x8803BF80, not 0x88000000. The wrong value looks entirely plausible and silently yields almost no valid cross-references.",
+        "Never attribute an MMIO constant from string-pool proximity. Doing so produced a claim that 0xBA002000 was the DSP7 window when it is the slot aperture — published, then retracted."
+      ]
+    },
+
+    {
+      "id": "yamaha-dm3",
+      "manufacturer": "Yamaha",
+      "model": "DM3",
+      "family": "DM series",
+      "class": "Digital mixing console",
+      "introduced": 2023,
+      "status": "partial",
+      "tags": ["Linux", "Named-component archive", "Dante", "FPGA", "Loadable DSP"],
+      "summary": "Nine years newer than the QL and sharing almost nothing with it but the parameter framework — including, crucially, the same DSP philosophy.",
+      "headline": "The update package is a named-component archive (`#YAMAHA MBDFArchive`) carrying a full Linux rootfs, and the installer is a plain bash script with no checksum ceremony and no signature. Unlike the QL, the DSP arrives as a loadable 3.8 MB image.",
+      "method": "Static analysis of the V3.00 firmware package (167 MB) and the macOS DM3 Editor. Nothing has been tested on hardware.",
+      "artifacts": [
+        "`DM3_firmware_V3.00.bin` — 167 MB, eleven named components",
+        "`DM3 Editor.app` (macOS)"
+      ],
+      "hardware": [
+        { "label": "Application processor", "value": "Runs a Linux userland — component 1 is an 88 MB rootfs tarball", "confidence": "verified" },
+        { "label": "FPGA", "value": "Present — component 3, `fab_V110.bin`, 539 KB inflated", "confidence": "verified" },
+        { "label": "DSP", "value": "Present as a loadable image — component 4, `DSP_V121.bin`, 3.80 MB inflated", "confidence": "verified" },
+        { "label": "Panel MCU", "value": "Component 2, `DM3PN_V100.bin`, 246 KB inflated", "confidence": "verified" },
+        { "label": "Audio networking", "value": "Audinate Brooklyn 3 plus a Broadway module — components 5 and 6", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Container format", "value": "`#YAMAHA MBDFArchive` — magic, model, version and a 16-byte digest, then `#FIRMWARE` records of five BE u32 fields, three NUL-terminated strings (path / description / version) and a zlib payload, terminated by `#END`", "confidence": "verified" },
+        { "label": "Main application", "value": "`app_console.tgz`, 64.8 MB inflated, V3.00", "confidence": "verified" },
+        { "label": "Installer", "value": "A bash script. Untars to /tmp/update, walks /yamaha/firmware.new/, compares each component's version file against the installed one and copies only what changed, running a per-component `<name>.sh` hook if present", "confidence": "verified" },
+        { "label": "Bootloader", "value": "Shipped as an updatable component — `app_bootloader.tgz`, V1.03", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Image signing", "value": "None — the installer performs no signature check", "confidence": "verified" },
+        { "label": "Integrity", "value": "A 16-byte digest in the archive header; no checksum ceremony in the install path", "confidence": "verified" },
+        { "label": "Encryption", "value": "None — every component is zlib, and unpacks with a 60-line script", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The Linux rootfs", "note": "A conventional userland behind an unsigned, script-driven installer is a materially different proposition from the QL's µITRON image." },
+        { "rank": 2, "item": "The DSP component", "note": "Unlike the QL's fixed-function DSP7s, the DM3 loads a 3.8 MB DSP image at update time. What accepts it has not been identified." }
+      ],
+      "verdict": "The interesting contrast with the QL is not the CPU or the OS — it is that the DSP is loadable here. That single fact changes what a modification would even mean on this platform.",
+      "openQuestions": [
+        "Which silicon consumes `DSP_V121.bin`, and in what format.",
+        "The FPGA part has not been identified.",
+        "No board has been inspected and no claim has been checked on hardware."
+      ],
+      "traps": []
+    },
+
+    {
+      "id": "allen-heath-sq5",
+      "manufacturer": "Allen & Heath",
+      "model": "SQ-5",
+      "family": "SQ series",
+      "class": "Digital mixing console",
+      "introduced": 2018,
+      "status": "documented",
+      "tags": ["FPGA mixing", "Zynq-7000", "Bare metal", "AMP", "No signing"],
+      "summary": "A 55 MB firmware image that contains none of the mixer. The entire audio path lives in FPGA fabric behind an undocumented AXI register map.",
+      "headline": "The update package is 55 MB of ARM image and 2.5 MB of bitstream — and the 2.5 MB is the mixer. Most of the 55 MB is uncompressed UI artwork.",
+      "method": "Static analysis of a single vendor firmware update file. No hardware was inspected. The firmware image was not retained, so the analysis currently cannot be re-derived without obtaining it again.",
+      "artifacts": [
+        "`SQ-5UPG_1_6_3r6268.bin` — three records, no compression, no encryption"
+      ],
+      "hardware": [
+        { "label": "SoC", "value": "Xilinx Zynq-7000 XC7Z020 — proven from the bitstream's IDCODE configuration packet (30018001 → 03727093), not inferred", "confidence": "verified" },
+        { "label": "Corroboration", "value": "Linked Xilinx PS drivers: xemacps, xscugic, xdevcfg, xqspips, xiicps, xttcps, xuartps, plus lwIP 2.0.3 (xilinx_modified)", "confidence": "verified" },
+        { "label": "FPGA count", "value": "One. xdevcfg with PCAP_FPGA_DONE_FAIL shows the bitstream loading into this same chip's PL over the PCAP bridge — there is no second FPGA", "confidence": "verified" },
+        { "label": "DRAM", "value": "≥1 GB — inferred from CPU1's 0x20100000 load address (513 MB in) against the Zynq-7000 PS ceiling of 1 GB. No memory-controller config was decoded", "confidence": "inferred" },
+        { "label": "Boot flash", "value": "Dual-parallel QSPI NOR, ~64 MB (`InitQspi2Dual`). Dual-parallel means two devices striped — a naive single-chip dump gets every other byte", "confidence": "verified" },
+        { "label": "Surface MCU", "value": "A fader/surface MCU flashed over SPI from the ARM (`Expected Fader Version %u.%u, updating...`)", "confidence": "verified" },
+        { "label": "FX board", "value": "Separate board with its own DSPs and SDRAM (`FX board ID 0x%02X not recognised`, `FX[0] failed SDRAM test`)", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "None. Zero FreeRTOS, ThreadX or Linux strings — a bare-metal Xilinx standalone BSP with a custom message-block system and a custom GUI", "confidence": "verified" },
+        { "label": "Core model", "value": "AMP across both Cortex-A9s, not SMP. `CPU0: sending Start Msg to CPU1`", "confidence": "verified" },
+        { "label": "CPU0", "value": "`sQu_Host` at 0x00100000 — mixer control, GUI, protocols", "confidence": "verified" },
+        { "label": "CPU1", "value": "`sQu_USB` at 0x20100000 — SQ-Drive: USB host, FAT, WAV. Directory layout /AHSQ/USBRec, /AHSQ/Scenes, /AHSQ/Shows appears verbatim", "confidence": "verified" },
+        { "label": "Container header", "value": "0x70 (112) bytes, computed as next_offset − this_offset − payload_len and confirmed independently at both gaps. It is not read from any field", "confidence": "verified" },
+        { "label": "Payload format", "value": "Despite `.elf` names the payloads are raw ARM32 images, each with a 16-byte preamble; byte 16 onward is the ARM exception vector table", "confidence": "verified" },
+        { "label": "Code fraction", "value": "Only ~10–16 MB of the 55 MB host image is code. From 16 MB on it compresses to 9–27%, i.e. uncompressed artwork and fonts", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Image signing", "value": "None. No RSA, SHA or AES strings anywhere in either image", "confidence": "verified" },
+        { "label": "Update validation", "value": "CRC only — `VerifyFlash Expected CRC to be 0x%lx, but calculated 0x%lx`", "confidence": "verified" },
+        { "label": "Bitstream encryption", "value": "Not encrypted. The CTL0 write is 0x00001501 with the DEC bit (bit 6) clear and no key-load sequence, so the bitstream is analysable", "confidence": "verified" },
+        { "label": "Recovery", "value": "A/B image banks with Zynq multiboot. The update overwrites the inactive bank; the first-stage bootloader is not in the update file and is not protected by the A/B scheme", "confidence": "verified" },
+        { "label": "Entitlement", "value": "An entitlement mechanism exists and was identified. Analysis stopped there — see the methodology page", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Interoperability, not rehosting", "note": "The SLink slot takes gigaACE, Dante and Waves cards, and Allen & Heath publish the SQ MIDI/TCP control protocol. This is where the value is." },
+        { "rank": 2, "item": "The PL bitstream", "note": "Unencrypted, and Project X-Ray covers Artix-7 and Zynq-7 fabric. But replacing it means writing a 48-channel 96 kHz engine against an unpublished pinout." },
+        { "rank": 3, "item": "The ARM software", "note": "Replaceable, and the Zynq is maximally Linux-friendly. It also gets you Linux wired to a black box, because none of the mixer is in the software you would be replacing." }
+      ],
+      "verdict": "A poor rehosting target, but not for the usual reasons. There is no secure boot and no signing — yet none of the mixer is in the software you would replace. If it were ever pursued, the correct first move is JTAG, not the USB update path: dump the 64 MB QSPI intact before writing anything.",
+      "openQuestions": [
+        "The PL's AXI register map is entirely undocumented — this is the whole audio path.",
+        "The first-stage bootloader is not in the update file and has never been seen.",
+        "The debug UART is near-certainly populated (xuartps is linked and printf diagnostics are everywhere) but has never been located on a board."
+      ],
+      "traps": [
+        "A parser assuming a 0x24 or 0x40 container header parses record 0 plausibly and then lands mid-payload in 55 MB of ARM code and artwork.",
+        "The correct load mapping for the host image is VA = file offset + 0x103DD0, pinned empirically from the GUI string-pointer table — not the 0x100000 the container header implies.",
+        "GUI strings are reached through a master string-pointer table indexed by string ID, so they have no direct LDR-literal cross-reference. Only BSP and system strings are loaded directly."
+      ]
+    },
+
+    {
+      "id": "behringer-wing-compact",
+      "manufacturer": "Behringer",
+      "model": "WING Compact",
+      "family": "WING series",
+      "class": "Digital mixing console",
+      "introduced": 2022,
+      "status": "active",
+      "tags": ["SHARC", "Efinix Trion", "i.MX 6", "AES50", "Clean room"],
+      "summary": "The only platform here being studied to build on rather than to understand — and the only one where the container format was analysed, found opaque, and then declared off the critical path.",
+      "headline": "The `.wingfw` container is opaque but structured, and specifically not a block cipher: index of coincidence is flat at 3.06 across every stride from 1 to 1024, and all 171 constant runs of ≥64 bytes are 0xFF with zero 0x00 runs. No block cipher leaves those.",
+      "method": "Static analysis of a vendor firmware image, plus published datasheets and standards. No hardware has been acquired, so every hardware row is provisional and marked accordingly. A written clean-room policy governs the project.",
+      "artifacts": [
+        "A `.wingfw` release image, version 3.1.1 (fullsize variant — nothing learned from it may be assumed to hold for Compact)",
+        "NXP i.MX 6 datasheet and reference manual",
+        "Analog Devices and Efinix product documentation"
+      ],
+      "hardware": [
+        { "label": "SoC", "value": "NXP i.MX 6 series, ARM Cortex-A9, MAPBGA 624", "confidence": "public" },
+        { "label": "Core count", "value": "1 (Solo-class) — to be confirmed by reading SCU config on hardware", "confidence": "inferred" },
+        { "label": "DRAM", "value": "1 GB at architectural base 0x10000000. Size unconfirmed — read the part markings", "confidence": "unknown" },
+        { "label": "Boot flash", "value": "SPI-NOR, ~8 MB, s25fl064k-class. Unconfirmed", "confidence": "unknown" },
+        { "label": "DSP", "value": "4 × Analog Devices ADSP-21489 SHARC — where the mixing actually happens", "confidence": "inferred" },
+        { "label": "FPGA", "value": "Efinix Trion T55 or T85 — the I/O fabric, not the mixer. Converter TDM, clock tree, AES50, StageConnect, AES/EBU and DSP links", "confidence": "inferred" },
+        { "label": "FPGA config", "value": "SPI slave from the i.MX 6", "confidence": "inferred" },
+        { "label": "Network switch", "value": "Marvell 88E6085 behind the i.MX 6 FEC, RMII 100 Mbit fixed-link. Unconfirmed", "confidence": "unknown" },
+        { "label": "AES50", "value": "etherCON, 100BASE-TX physical layer. Whether a discrete PHY sits behind each port is unknown and decides whether those ports could ever carry anything else", "confidence": "unknown" },
+        { "label": "Clock tree", "value": "Steerable (VCXO/DCO) or fixed crystals — unknown. This single question decides whether AES67 is possible on this hardware at all", "confidence": "unknown" },
+        { "label": "StageConnect", "value": "USB-C physical layer, 32 channels", "confidence": "public" },
+        { "label": "Panel", "value": "LVDS 1280×800, USB HID touch, motorised faders, per-strip colour scribble LCDs. Panel timings deliberately not recorded — they belong to the panel's datasheet", "confidence": "unknown" }
+      ],
+      "software": [
+        { "label": "Boot path", "value": "The i.MX 6 has a documented, public boot ROM with a USB serial-download path. This is the fact that makes the whole project viable", "confidence": "public" },
+        { "label": "Container", "value": "`.wingfw` — entropy 7.37 overall, first 2 MB flat at 8.00, remainder 6.1–7.5; byte histogram strongly skewed low; no signature found plain or under 514 cheap transforms; no ECB structure", "confidence": "verified" },
+        { "label": "Container verdict", "value": "Opaque but structured, and not a block cipher. Decoding it is never required in order to write a replacement OS", "confidence": "inferred" },
+        { "label": "DSP toolchain", "value": "ADI CrossCore — proprietary, licensed", "confidence": "public" },
+        { "label": "FPGA toolchain", "value": "Efinix Efinity — free, but proprietary", "confidence": "public" }
+      ],
+      "security": [
+        { "label": "Secure boot", "value": "Unknown, and it is the project's kill criterion. If the i.MX 6 HAB fuses are burned closed, the platform is not open and the work stops", "confidence": "unknown" },
+        { "label": "Container", "value": "Obfuscated by a mechanism not yet identified. Analysed, unsolved, and off the critical path", "confidence": "unknown" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The application processor", "note": "Subject to the HAB question, this is a conventional ARM SoC with a public boot ROM." },
+        { "rank": 2, "item": "The four SHARCs", "note": "Documented parts. Bringing them up from nothing, alongside the Trion bitstream and AES50, is the mountain." },
+        { "rank": 3, "item": "USB audio on the host port", "note": "The measurement path that can never be blocked by the FPGA and DSP work — deliberately staged first for exactly that reason." }
+      ],
+      "verdict": "Hardware-wise the most open platform surveyed, and the only one where a full replacement OS is a coherent goal. Everything now rests on two cheap lid-off questions and one fuse.",
+      "openQuestions": [
+        "Is the i.MX 6 serial-download path reachable, and are the HAB fuses unburned? Everything else is downstream of this.",
+        "Discrete PHY behind each etherCON, or straight to fabric?",
+        "Is anything in the clock tree steerable?"
+      ],
+      "traps": [
+        "A 3-byte magic such as gzip's appears about 2.3 times by chance in 38 MB, and scanning 514 transforms means scanning 263 MB — expect roughly 16 coincidental hits. An early verdict called the firmware \"a known container\" on exactly that basis.",
+        "Every negative sweep result needs a positive control. A broken sweep and a genuine absence look identical."
+      ]
+    },
+
+    {
+      "id": "waves-soundgrid",
+      "manufacturer": "Waves",
+      "model": "SoundGrid",
+      "family": "SoundGrid / DiGiGrid",
+      "class": "Audio-over-Ethernet platform",
+      "introduced": 2010,
+      "status": "documented",
+      "tags": ["Layer 2", "EtherType 0x8908", "Realtime Linux", "Node model", "Interoperability"],
+      "summary": "Not a console, but the transport a great many of them hang off. Documented from both ends at once — the server firmware and the host driver are the same protocol version.",
+      "headline": "The SoundGrid Server is a hard-realtime appliance, not a general-purpose Linux box. Its kernel command line isolates every worker core from the scheduler, RCU, tick, idle and frequency scaling, and SoundGrid frames are steered to a dedicated uncoalesced hardware receive queue.",
+      "method": "Static analysis of vendor-distributed binaries and configuration files already present on a machine holding a licensed installation. No Waves source code, NDA material or SDK was involved. Techniques: reading plain-text scripts, demangling C++ symbol and RTTI tables, extracting strings, and disassembling a small number of functions in the GPL kernel module.",
+      "artifacts": [
+        "SoundGrid Driver (macOS kext) 16.5.15.119 — unstripped C++ symbols",
+        "SGS firmware image `SGS_16.5`, External_Version 16.5.79.183 — extracted SquashFS",
+        "`AG_NSServer` — stripped ELF, retains C++ RTTI",
+        "`wsgnf.ko` — GPL-licensed kernel module, unstripped",
+        "141 × `.wfi` per-model I/O firmware files, referenced by name only"
+      ],
+      "hardware": [
+        { "label": "Server platform", "value": "x86_64 appliance; the binary names an Intel I225-V 2.5GbE-class controller", "confidence": "verified" },
+        { "label": "Boot", "value": "SYSLINUX/EFI into a RAM-resident root filesystem — SquashFS (zstd) initrd on /dev/ram0, overlaid read-write on tmpfs and pivot_root'ed into", "confidence": "verified" },
+        { "label": "Base distribution", "value": "ryolinux-release 4.3, Buildroot-derived, hostname `buildroot`", "confidence": "verified" },
+        { "label": "Kernel", "value": "6.12.11 SMP PREEMPT_RT — fully preemptible realtime", "confidence": "verified" },
+        { "label": "Link layer", "value": "EtherType 0x8908, steered by ethtool receive-flow rules to hardware queue 1 with interrupt coalescing disabled (rx-frames 1, tx-frames 1)", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Process model", "value": "A single userland process, `AG_NSServer` (AudioGrid Network Shell Server), owns the protocol. It starts before the network stack is brought up", "confidence": "verified" },
+        { "label": "Realtime partitioning", "value": "Command-line options name a control core, a master core and a worker core set, plus AudioGrid and kernel CPU reserve percentages", "confidence": "verified" },
+        { "label": "Kernel fast path", "value": "`wsgnf.ko` — character device, an mmap region shared with userland, ioctls for sample-set enable/disable and interface naming, and /proc debug and stats entries", "confidence": "verified" },
+        { "label": "Shared mapping", "value": "Carries at least a mutex and a switch timestamp — the latter being how userland and kernel agree on the exact sample instant a configuration change takes effect", "confidence": "inferred" },
+        { "label": "Protocol shape", "value": "Not a flat command set. A set of node families, each with its own protocol version, addressed by node number, each exposing a description-get operation plus family-specific commands", "confidence": "verified" },
+        { "label": "Self-description", "value": "The server can emit its own protocol description as XML (`-M`, node protocol xml). Capturing that output is the single highest-value next step", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Scope boundary", "value": "Licensing, authorisation and entitlement mechanisms are explicitly out of scope and were not analysed", "confidence": "verified" },
+        { "label": "GPL obligation", "value": "`wsgnf.ko` declares license=GPL in its module metadata and is distributed in binary form as part of a product. The source-availability obligation applies on its own terms. No claim is made here about whether it has been met", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "An independently created node", "note": "The stated goal: a device that appears on a SoundGrid network as a discoverable node, recovers the network sample clock, and exchanges multichannel audio with servers and I/O devices." }
+      ],
+      "verdict": "The most conventionally documentable platform here, because both sides of the same protocol version were available and corroborate each other — the driver names its C++ classes and the server names its message types.",
+      "openQuestions": [
+        "No claim has been validated against live hardware. Nothing has been tested against a real SoundGrid network.",
+        "Every wire layout should be treated as provisional until a packet capture confirms it.",
+        "The XML self-description has not yet been captured from a running server."
+      ],
+      "traps": [
+        "This is not black-box analysis and should never be described as such — the findings come substantially from inspecting vendor binaries.",
+        "It is not clean-room analysis either, because no implementation exists yet and therefore no team separation has been established. Both terms are commonly misapplied to work of this kind."
+      ]
+    },
+
+    {
+      "id": "violet-dmix-128",
+      "manufacturer": "Violet Audio",
+      "model": "dMix 128",
+      "family": "dMix",
+      "class": "Digital mixing console — control plane",
+      "introduced": 2024,
+      "status": "partial",
+      "tags": ["Control protocol", "VSKP", "MIDI", "REST/OSC", "Surface"],
+      "summary": "Control-plane work rather than a firmware teardown — undertaken to drive the console from a bespoke surface rather than to understand its internals.",
+      "headline": "The console's own VSKP protocol over TCP 1703 was mapped and then deliberately relegated to a fallback, because layer state, channel selection and sends-on-fader live only inside the control application and are not console parameters at all.",
+      "method": "Behavioural analysis against Mixing Station 3.1.2 running offline as a dMix 128. Offline mode models the full 213-channel data tree, so parameter facts are solid; anything requiring a physical MIDI device or the real console is untested. No console, control surface or panel hardware exists.",
+      "artifacts": [
+        "Mixing Station 3.1.2 desktop, offline dMix 128 profile",
+        "Generated parameter map — regenerated by script, not hand-edited"
+      ],
+      "hardware": [
+        { "label": "Console profile", "value": "consoleId 22, `dmix 128`, manufacturerId 9 (Violet Audio)", "confidence": "verified" },
+        { "label": "Channel model", "value": "213 channels in the full data tree", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Console protocol", "value": "VSKP over TCP 1703 — mapped, retained as a fallback route only", "confidence": "verified" },
+        { "label": "Control APIs", "value": "REST on :8080 and OSC on :3000", "confidence": "verified" },
+        { "label": "Application state", "value": "Layers, selected channel and the sends-on-fader target exist only inside the control application. They are not console parameters and are not in its REST API", "confidence": "verified" },
+        { "label": "Surface transport", "value": "MCU over USB-MIDI for motor faders; plain MIDI for encoder panels; Companion for button surfaces", "confidence": "verified" }
+      ],
+      "security": [],
+      "programmable": [
+        { "rank": 1, "item": "MIDI into the control application", "note": "Panels that speak MIDI to the application inherit layer, selection and sends-on-fader state for free, because the application's own actions are written in those terms. Panels that speak to the console directly would have to reimplement its model in firmware." }
+      ],
+      "verdict": "A useful counter-example to the rest of the index: the protocol was fully reachable and the right architectural decision was still to not use it directly.",
+      "openQuestions": [
+        "Nothing has been tested against a real dMix 128.",
+        "No physical MIDI device has been exercised against the mapping."
+      ],
+      "traps": [
+        "A surface that talks straight to the console cannot know which layer is up or which channel is selected — those are application state, not console state."
+      ]
+    },
+
+    {
+      "id": "loom",
+      "manufacturer": "Stoatworks Labs",
+      "model": "LOOM",
+      "family": "—",
+      "class": "Reference design — open console",
+      "introduced": null,
+      "status": "reference",
+      "tags": ["Zynq UltraScale+", "FPGA mixing", "Dante", "AES67", "Milan", "Own design"],
+      "summary": "Not a teardown. The open console these teardowns keep pointing at — included because \"what would you build instead\" is the question every one of them ends on.",
+      "headline": "128 inputs, 64 buses, every channel strip computed in FPGA fabric at 96 kHz, speaking Dante, RAVENNA/AES67 and AVB/Milan simultaneously. Where the commercial platforms hide the mixer behind an undocumented register map, here the register map is the deliverable.",
+      "method": "Original design work. Correctness rests on a bit-accurate fixed-point model in Rust, replayed against the RTL in Verilator.",
+      "artifacts": [
+        "Engineering specification — numbered, verifiable requirements",
+        "Fixed-point model and Verilator testbenches"
+      ],
+      "hardware": [
+        { "label": "Processing platform", "value": "AMD Zynq UltraScale+ XCZU7EV (ZCU106 evaluation board)", "confidence": "public" },
+        { "label": "Sample rate", "value": "96 kHz native, 192 kHz selectable", "confidence": "public" },
+        { "label": "Internal format", "value": "32-bit fixed-point Q4.27 with 24 dB headroom, 35-bit Q2.32 coefficients, 59-bit accumulator, TDF2 with full-precision feedback", "confidence": "public" },
+        { "label": "Local I/O", "value": "192 in / 192 out — 16×16 analog, 8×8 AES3, 64×64 MADI, 2 × AES50", "confidence": "public" },
+        { "label": "Control plane", "value": "4 × Cortex-A53 running Linux, 2 × Cortex-R5F bare-metal DSP supervisor", "confidence": "public" }
+      ],
+      "software": [
+        { "label": "Routing", "value": "Full 192×64 crosspoint, latency-aligned — any input reaches any output in identical total sample count regardless of route depth", "confidence": "public" },
+        { "label": "AoIP", "value": "Dante IP Core native on-die, RAVENNA/AES67 + SMPTE ST 2110-30 native in PL, AVB/Milan native in PL — concurrently", "confidence": "public" },
+        { "label": "Core latency target", "value": "≈0.5 ms on the locked native path with SRC bypassed", "confidence": "public" }
+      ],
+      "security": [],
+      "programmable": [
+        { "rank": 1, "item": "All of it", "note": "That is the point of including it here." }
+      ],
+      "verdict": "The contrast that makes the rest of the index legible. Two of the four teardowns concluded that the platform was closed by construction rather than by policy — LOOM is what the alternative costs.",
+      "openQuestions": [
+        "This is a design, not a shipped product. It is listed here as a reference point, not as a claim of completion."
+      ],
+      "traps": []
+    },
+
+    {
+      "id": "allen-heath-dlive",
+      "manufacturer": "Allen & Heath",
+      "model": "dLive",
+      "family": "dLive",
+      "class": "Digital mixing console",
+      "introduced": 2016,
+      "status": "candidate",
+      "tags": ["Not started"],
+      "summary": "Appears in existing work only as the larger sibling platform to the SQ. No analysis has been performed.",
+      "headline": "No work has been done on this platform. It is listed so the index reflects what has been considered as well as what has been examined.",
+      "method": "None.",
+      "artifacts": [],
+      "hardware": [],
+      "software": [],
+      "security": [],
+      "programmable": [],
+      "verdict": "Candidate only.",
+      "openQuestions": ["Everything."],
+      "traps": []
+    },
+
+    {
+      "id": "behringer-x32-midas-m32",
+      "manufacturer": "Behringer / Midas",
+      "model": "X32 / M32",
+      "family": "X32",
+      "class": "Digital mixing console",
+      "introduced": 2012,
+      "status": "candidate",
+      "tags": ["Not started"],
+      "summary": "Referenced in the WING work as the platform with the most prior open-source activity. No analysis of our own has been performed.",
+      "headline": "No work has been done on this platform. Existing third-party open projects on it are treated as a licensing consideration for the WING work, not as a source.",
+      "method": "None.",
+      "artifacts": [],
+      "hardware": [],
+      "software": [],
+      "security": [],
+      "programmable": [],
+      "verdict": "Candidate only.",
+      "openQuestions": ["Everything."],
+      "traps": []
+    }
+  ]
+}

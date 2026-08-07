@@ -1,0 +1,189 @@
+---
+import Base from '../../layouts/Base.astro';
+import data from '../../data/platforms.json';
+
+const { platforms, statuses } = data;
+
+// Everything the client-side filter searches is baked into a data attribute at
+// build time, so the page needs no fetch and no framework.
+const rows = platforms.map((p) => ({
+  ...p,
+  haystack: [
+    p.manufacturer, p.model, p.family, p.class, p.summary, p.headline,
+    ...p.tags,
+    ...p.hardware.map((h) => `${h.label} ${h.value}`),
+    ...p.software.map((s) => `${s.label} ${s.value}`),
+  ].join(' ').toLowerCase(),
+  statusLabel: statuses.find((s) => s.id === p.status)?.label ?? p.status,
+}));
+
+const classes = [...new Set(platforms.map((p) => p.class))].sort();
+---
+
+<Base
+  title="Platform index — Console Internals"
+  description="A sortable, searchable index of the digital mixing console platforms examined: silicon, operating system, audio engine location, firmware container and update security."
+  section="platforms"
+>
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow">Index</p>
+      <h1>Platform index</h1>
+      <p class="lede">
+        {platforms.length} platforms. Each entry records where the audio actually happens,
+        what the processor really is, how firmware is packaged and validated, and what
+        remains unknown. Sort, filter and search below; every row on a detail page carries
+        its own confidence label.
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <div class="controls">
+      <div class="control-row">
+        <input
+          class="search"
+          id="q"
+          type="search"
+          placeholder="Search manufacturer, model, silicon, OS, protocol…"
+          aria-label="Search platforms"
+          autocomplete="off"
+        />
+        <label class="sortlbl" for="sort">
+          Sort
+          <select class="sort" id="sort">
+            <option value="status">Research depth</option>
+            <option value="manufacturer">Manufacturer A–Z</option>
+            <option value="model">Model A–Z</option>
+            <option value="year-desc">Year — newest first</option>
+            <option value="year-asc">Year — oldest first</option>
+            <option value="class">Class</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="control-row">
+        <div class="chips" id="status-chips" role="group" aria-label="Filter by research status">
+          <button class="chip" type="button" data-filter="status" data-value="" aria-pressed="true">All status</button>
+          {/* aria-label is explicit so a chip announces "Documented" rather than its
+              whole tooltip — title alone wins the accessible-name computation. */}
+          {statuses.map((s) => (
+            <button class="chip" type="button" data-filter="status" data-value={s.id} aria-pressed="false" aria-label={s.label} title={s.note}>
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div class="control-row">
+        <div class="chips" id="class-chips" role="group" aria-label="Filter by platform class">
+          <button class="chip" type="button" data-filter="class" data-value="" aria-pressed="true">All classes</button>
+          {classes.map((c) => (
+            <button class="chip" type="button" data-filter="class" data-value={c} aria-pressed="false">{c}</button>
+          ))}
+        </div>
+        <span class="count" id="count" aria-live="polite"></span>
+      </div>
+    </div>
+
+    <div class="cards" id="cards">
+      {rows.map((p) => (
+        <a
+          class="card"
+          href={`/platforms/${p.id}/`}
+          data-haystack={p.haystack}
+          data-status={p.status}
+          data-class={p.class}
+          data-manufacturer={p.manufacturer}
+          data-model={p.model}
+          data-year={p.introduced ?? 0}
+          data-statusrank={statuses.findIndex((s) => s.id === p.status)}
+        >
+          <div class="card-head">
+            <h3>{p.manufacturer} {p.model}</h3>
+            <span class="mfr">{p.class}{p.introduced ? ` · ${p.introduced}` : ''}</span>
+          </div>
+          <p>{p.summary}</p>
+          <div class="card-meta">
+            <span class={`status status-${p.status}`}>{p.statusLabel}</span>
+            <span class="chips">
+              {p.tags.slice(0, 5).map((t) => <span class="tag">{t}</span>)}
+            </span>
+          </div>
+        </a>
+      ))}
+    </div>
+    <p class="empty" id="empty" hidden>No platform matches that.</p>
+  </div>
+</Base>
+
+<script>
+  // Progressive enhancement: without JS every card is already rendered and linked.
+  const q = document.getElementById('q');
+  const sortSel = document.getElementById('sort');
+  const container = document.getElementById('cards');
+  const empty = document.getElementById('empty');
+  const count = document.getElementById('count');
+  const cards = Array.from(container.querySelectorAll('.card'));
+
+  const active = { status: '', class: '' };
+
+  function collator(a, b) { return a.localeCompare(b, 'en'); }
+
+  const sorters = {
+    status: (a, b) =>
+      +a.dataset.statusrank - +b.dataset.statusrank ||
+      collator(a.dataset.manufacturer, b.dataset.manufacturer),
+    manufacturer: (a, b) =>
+      collator(a.dataset.manufacturer, b.dataset.manufacturer) ||
+      collator(a.dataset.model, b.dataset.model),
+    model: (a, b) => collator(a.dataset.model, b.dataset.model),
+    // Year 0 means "no meaningful date" (our own design) — park those last either way.
+    'year-desc': (a, b) => (+b.dataset.year || -1) - (+a.dataset.year || -1),
+    'year-asc': (a, b) => (+a.dataset.year || 9999) - (+b.dataset.year || 9999),
+    class: (a, b) =>
+      collator(a.dataset.class, b.dataset.class) ||
+      collator(a.dataset.manufacturer, b.dataset.manufacturer),
+  };
+
+  function apply() {
+    const term = q.value.trim().toLowerCase();
+    let shown = 0;
+
+    for (const card of cards) {
+      const okText = !term || card.dataset.haystack.includes(term);
+      const okStatus = !active.status || card.dataset.status === active.status;
+      const okClass = !active.class || card.dataset.class === active.class;
+      const visible = okText && okStatus && okClass;
+      card.hidden = !visible;
+      if (visible) shown++;
+    }
+
+    // Re-append in sort order. Hidden nodes move too, which keeps the DOM order
+    // honest if a filter is later cleared.
+    const sorted = [...cards].sort(sorters[sortSel.value]);
+    for (const card of sorted) container.appendChild(card);
+
+    empty.hidden = shown !== 0;
+    container.hidden = shown === 0;
+    count.textContent = shown === cards.length
+      ? `${cards.length} platforms`
+      : `${shown} of ${cards.length} platforms`;
+  }
+
+  q.addEventListener('input', apply);
+  sortSel.addEventListener('change', apply);
+
+  for (const chip of document.querySelectorAll('.chip[data-filter]')) {
+    chip.addEventListener('click', () => {
+      const group = chip.dataset.filter;
+      active[group] = chip.dataset.value;
+      for (const sibling of document.querySelectorAll(`.chip[data-filter="${group}"]`)) {
+        sibling.setAttribute('aria-pressed', String(sibling === chip));
+      }
+      apply();
+    });
+  }
+
+  apply();
+</script>

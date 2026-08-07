@@ -1,0 +1,16 @@
+{
+  "name": "console-internals",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Console Internals — reverse-engineering research on digital mixing console platforms",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "check": "astro check"
+  },
+  "dependencies": {
+    "astro": "^7.1.6"
+  }
+}

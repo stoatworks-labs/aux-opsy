@@ -1,0 +1,126 @@
+---
+import Base from '../layouts/Base.astro';
+import data from '../data/platforms.json';
+
+const { platforms, statuses } = data;
+const examined = platforms.filter((p) => !['candidate', 'reference'].includes(p.status));
+const featured = examined.slice(0, 4);
+const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
+---
+
+<Base
+  title="Console Internals — how digital mixing consoles are actually built"
+  description="Independent reverse-engineering research on digital mixing console platforms: where the audio processing really happens, what the silicon really is, and how firmware is packaged and validated."
+  section="home"
+>
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow">Stoatworks Labs · research</p>
+      <h1 style="max-width:19ch">How digital mixing consoles are actually built</h1>
+      <p class="lede">
+        Independent teardowns of the platforms behind live-sound consoles — derived from
+        published firmware, service manuals and datasheets, with every claim labelled by how
+        well it is evidenced. No console was opened. Nothing here has been tested on hardware.
+      </p>
+      <p style="margin-top:1.75rem">
+        <a href="/platforms/">Browse the platform index →</a>
+        &nbsp;&nbsp;·&nbsp;&nbsp;
+        <a href="/method/">Read the method &amp; legal statement</a>
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <section class="prose" style="padding-top:2.75rem">
+      <h2 style="margin-top:0">The question this started from</h2>
+      <p>
+        We build audio processing software — equal-loudness EQ, zero-latency dynamics, sound
+        level measurement. Each of those raised the same obvious question: <em>could this run
+        on a console?</em> Answering it honestly meant finding out what is inside the
+        consoles, which turned out to be a considerably more interesting question than the one
+        we started with.
+      </p>
+      <p>
+        The short version is that the industry has quietly split into two architectures. On
+        one side are platforms where the mixing is fixed-function silicon or FPGA fabric, and
+        the megabytes of firmware you can download contain none of the audio path at all. On
+        the other are platforms running a conventional operating system where the DSP arrives
+        as a loadable image. The difference is invisible from the front panel and decides
+        everything about what a third party could ever do with the machine.
+      </p>
+
+      <div class="note">
+        <p style="margin:0">
+          <strong>Two of the four teardowns concluded "no".</strong> That is the useful part.
+          A negative result reached with evidence — <em>these DSPs have no instruction memory,
+          and here is the absence that proves it</em> — is worth more than an optimistic
+          maybe, and it is recorded here as prominently as anything else.
+        </p>
+      </div>
+    </section>
+
+    <section>
+      <h2>What each entry records</h2>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr><th scope="col">Section</th><th scope="col">What it answers</th></tr>
+          </thead>
+          <tbody>
+            <tr><td class="k">Hardware architecture</td><td>The real silicon — SoC, mixing DSP, FPGA, converters, memory, panel MCUs, network — with the evidence for each part number.</td></tr>
+            <tr><td class="k">Software architecture</td><td>Operating system or lack of one, core model, load addresses, task structure, what fraction of the image is actually code.</td></tr>
+            <tr><td class="k">Update &amp; security model</td><td>How firmware is packaged, and how the device decides an image is acceptable. Structural facts, not exploits.</td></tr>
+            <tr><td class="k">What is programmable</td><td>Ranked, honestly. Often the answer is "not the part you wanted".</td></tr>
+            <tr><td class="k">Traps</td><td>Mistakes the analysis made. Each one produced a plausible wrong answer rather than an obvious failure.</td></tr>
+            <tr><td class="k">Open questions</td><td>What remains unknown, stated as plainly as what is known.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Platforms examined</h2>
+      <div class="cards" style="margin-top:1.25rem">
+        {featured.map((p) => (
+          <a class="card" href={`/platforms/${p.id}/`}>
+            <div class="card-head">
+              <h3>{p.manufacturer} {p.model}</h3>
+              <span class="mfr">{p.class}</span>
+            </div>
+            <p>{p.summary}</p>
+            <div class="card-meta">
+              <span class={`status status-${p.status}`}>{label(p.status)}</span>
+              <span class="chips">{p.tags.slice(0, 4).map((t) => <span class="tag">{t}</span>)}</span>
+            </div>
+          </a>
+        ))}
+      </div>
+      <p style="margin-top:1.5rem">
+        <a href="/platforms/">All {platforms.length} entries, sortable and searchable →</a>
+      </p>
+    </section>
+
+    <section class="prose">
+      <h2>How to read this</h2>
+      <p>
+        Every row in every table carries a confidence label:
+        <span class="conf conf-verified">Verified</span> means it was read directly out of an
+        artifact; <span class="conf conf-inferred">Inferred</span> means it is a well-supported
+        reading of evidence with the competing readings given;
+        <span class="conf conf-unknown">Unknown</span> means the artifacts show it exists and
+        nothing more; <span class="conf conf-public">Public</span> means a datasheet or
+        standard said so and no analysis was needed.
+      </p>
+      <p>
+        The labels are the point. It would be easy to write this site in a confident voice and
+        much less useful. Where something rests on a single artifact, or on an image no longer
+        in our possession, the page says so.
+      </p>
+      <p>
+        Before citing anything here, please read the
+        <a href="/method/">method and legal statement</a> — it sets out how the work was done,
+        the boundaries it observes, and what it deliberately does not touch.
+      </p>
+    </section>
+  </div>
+</Base>

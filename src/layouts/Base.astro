@@ -1,0 +1,74 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Nav key so the header can mark the current section. */
+  section?: 'home' | 'platforms' | 'method';
+}
+
+const { title, description, section } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site).href;
+const year = new Date().getFullYear();
+---
+<!-- Astro renders the document shell; this layout owns head + chrome. -->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+    <meta name="robots" content="index, follow" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="wrap">
+        <a class="brand" href="/">Console&nbsp;Internals <span>/ Stoatworks Labs</span></a>
+        <nav class="site-nav" aria-label="Primary">
+          <a href="/" aria-current={section === 'home' ? 'page' : undefined}>Overview</a>
+          <a href="/platforms/" aria-current={section === 'platforms' ? 'page' : undefined}>Platforms</a>
+          <a href="/method/" aria-current={section === 'method' ? 'page' : undefined}>Method &amp; legal</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="wrap foot-grid">
+        <div>
+          <strong>Console Internals</strong>
+          Independent research into the architecture of digital mixing consoles.
+          Documentation only.
+        </div>
+        <div>
+          <strong>Before you cite anything here</strong>
+          Read the <a href="/method/">method and legal statement</a>. Every claim carries a
+          confidence label, and most of this has never been checked against hardware.
+        </div>
+        <div>
+          <strong>Not affiliated</strong>
+          All manufacturer and product names are the trademarks of their respective owners
+          and are used here for identification only. Nothing here is endorsed by,
+          or produced in cooperation with, any manufacturer named.
+        </div>
+        <div>
+          <strong>© {year} Stoatworks Labs</strong>
+          <a href="https://stoatworks-labs.com">stoatworks-labs.com</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

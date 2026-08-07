@@ -1,0 +1,208 @@
+---
+import Base from '../../layouts/Base.astro';
+import data from '../../data/platforms.json';
+
+export function getStaticPaths() {
+  return data.platforms.map((p) => ({ params: { slug: p.id }, props: { platform: p } }));
+}
+
+const { platform: p } = Astro.props;
+const { statuses, confidence } = data;
+const statusMeta = statuses.find((s) => s.id === p.status);
+
+// A candidate entry has no findings to render, so most sections collapse away.
+const hasFindings = p.hardware.length > 0 || p.software.length > 0;
+
+const sections = [
+  ['summary', 'Summary'],
+  hasFindings && ['method', 'Method'],
+  p.hardware.length > 0 && ['hardware', 'Hardware'],
+  p.software.length > 0 && ['software', 'Software'],
+  p.security.length > 0 && ['security', 'Update & security'],
+  p.programmable.length > 0 && ['programmable', 'What is programmable'],
+  p.traps.length > 0 && ['traps', 'Traps'],
+  ['open', 'Open questions'],
+].filter(Boolean);
+
+function Conf(level) {
+  return { cls: `conf conf-${level}`, label: confidence[level].label, note: confidence[level].note };
+}
+---
+
+<Base
+  title={`${p.manufacturer} ${p.model} — Console Internals`}
+  description={p.summary}
+  section="platforms"
+>
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow"><a href="/platforms/">Platform index</a> / {p.class}</p>
+      <h1>{p.manufacturer} {p.model}</h1>
+      <p class="lede">{p.summary}</p>
+      <div class="card-meta" style="margin-top:1.25rem">
+        <span class={`status status-${p.status}`} title={statusMeta?.note}>{statusMeta?.label}</span>
+        {p.introduced && <span class="tag">Introduced {p.introduced}</span>}
+        {p.family !== '—' && <span class="tag">{p.family}</span>}
+        {p.tags.map((t) => <span class="tag">{t}</span>)}
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap" style="padding-top:2.5rem">
+    <div class="detail-grid">
+      <nav class="toc" aria-label="On this page">
+        <p class="eyebrow" style="margin-bottom:.25rem">On this page</p>
+        <ul>
+          {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+        </ul>
+      </nav>
+
+      <div>
+        <section id="summary">
+          <div class="note">
+            <p style="margin:0"><strong>The load-bearing finding.</strong> {p.headline}</p>
+          </div>
+          <p class="prose"><strong>Verdict.</strong> {p.verdict}</p>
+        </section>
+
+        {hasFindings && (
+          <section id="method">
+            <h2>Method</h2>
+            <p class="prose">{p.method}</p>
+            {p.artifacts.length > 0 && (
+              <>
+                <h3>Artifacts examined</h3>
+                <ul class="prose">
+                  {p.artifacts.map((a) => <li set:html={a.replace(/`([^`]+)`/g, '<code>$1</code>')} />)}
+                </ul>
+              </>
+            )}
+            <p class="prose" style="color:var(--ink-2);font-size:.93rem">
+              No manufacturer firmware, binaries or documentation are redistributed here.
+              Artifacts are referenced by name and version only. See the
+              <a href="/method/">method and legal statement</a> for the basis on which this
+              analysis was performed and the boundaries it observes.
+            </p>
+          </section>
+        )}
+
+        {p.hardware.length > 0 && (
+          <section id="hardware">
+            <h2>Hardware architecture</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th scope="col">Item</th><th scope="col">Finding</th><th scope="col">Confidence</th></tr>
+                </thead>
+                <tbody>
+                  {p.hardware.map((h) => (
+                    <tr>
+                      <td class="k">{h.label}</td>
+                      <td set:html={h.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td><span class={Conf(h.confidence).cls} title={Conf(h.confidence).note}>{Conf(h.confidence).label}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {p.software.length > 0 && (
+          <section id="software">
+            <h2>Software architecture</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th scope="col">Item</th><th scope="col">Finding</th><th scope="col">Confidence</th></tr>
+                </thead>
+                <tbody>
+                  {p.software.map((s) => (
+                    <tr>
+                      <td class="k">{s.label}</td>
+                      <td set:html={s.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td><span class={Conf(s.confidence).cls} title={Conf(s.confidence).note}>{Conf(s.confidence).label}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {p.security.length > 0 && (
+          <section id="security">
+            <h2>Update path &amp; security model</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th scope="col">Item</th><th scope="col">Finding</th><th scope="col">Confidence</th></tr>
+                </thead>
+                <tbody>
+                  {p.security.map((s) => (
+                    <tr>
+                      <td class="k">{s.label}</td>
+                      <td set:html={s.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td><span class={Conf(s.confidence).cls} title={Conf(s.confidence).note}>{Conf(s.confidence).label}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="prose" style="color:var(--ink-2);font-size:.93rem">
+              These rows describe how a platform validates a firmware image, because that is
+              a structural fact about its architecture. They are not a vulnerability
+              disclosure and no exploit, bypass or circumvention technique is published here.
+              Licensing and entitlement mechanisms are out of scope throughout — see
+              <a href="/method/#boundaries">scope boundaries</a>.
+            </p>
+          </section>
+        )}
+
+        {p.programmable.length > 0 && (
+          <section id="programmable">
+            <h2>What is programmable</h2>
+            <ol class="pill-list">
+              {p.programmable.map((x) => (
+                <li>
+                  <span class="n">{x.rank}</span><strong>{x.item}</strong>
+                  <p>{x.note}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        )}
+
+        {p.traps.length > 0 && (
+          <section id="traps">
+            <h2>Traps</h2>
+            <p class="prose" style="color:var(--ink-2)">
+              Mistakes this analysis actually made, or came close to making. They are recorded
+              because each one produces a plausible-looking wrong answer rather than an obvious
+              failure.
+            </p>
+            <ul class="prose">
+              {p.traps.map((t) => <li set:html={t.replace(/`([^`]+)`/g, '<code>$1</code>')} />)}
+            </ul>
+          </section>
+        )}
+
+        <section id="open">
+          <h2>Open questions</h2>
+          <ul class="prose">
+            {p.openQuestions.map((o) => <li>{o}</li>)}
+          </ul>
+          <div class="note warn">
+            <p style="margin:0">
+              <strong>Status of this entry.</strong> {statusMeta?.note}
+              {' '}Unless a row says otherwise, nothing on this page has been verified against
+              physical hardware.
+            </p>
+          </div>
+        </section>
+
+        <p style="margin-top:3rem"><a href="/platforms/">← Back to the platform index</a></p>
+      </div>
+    </div>
+  </div>
+</Base>

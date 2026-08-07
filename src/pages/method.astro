@@ -1,0 +1,401 @@
+---
+import Base from '../layouts/Base.astro';
+import data from '../data/platforms.json';
+
+const { platforms, confidence } = data;
+const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !== 'reference');
+---
+
+<Base
+  title="Method & legal status — Console Internals"
+  description="Why this research exists, how it was performed, what was deliberately not done, and the legal basis on which reverse engineering for interoperability proceeds."
+  section="method"
+>
+  <section class="band">
+    <div class="wrap">
+      <p class="eyebrow">Method</p>
+      <h1>Method &amp; legal status</h1>
+      <p class="lede">
+        This page states, before any technical content, <strong>why</strong> this analysis
+        exists, <strong>how</strong> it was performed, and <strong>what was and was not
+        done</strong>. It is deliberately precise, because an inaccurate methodology claim is
+        worse than no claim at all.
+      </p>
+    </div>
+  </section>
+
+  <div class="wrap" style="padding-top:2.75rem">
+    <div class="detail-grid">
+      <nav class="toc" aria-label="On this page">
+        <p class="eyebrow" style="margin-bottom:.25rem">On this page</p>
+        <ul>
+          <li><a href="#purpose">Purpose</a></li>
+          <li><a href="#how">How the work was done</a></li>
+          <li><a href="#terms">Two terms, used precisely</a></li>
+          <li><a href="#claimed">What is claimed</a></li>
+          <li><a href="#boundaries">Scope boundaries</a></li>
+          <li><a href="#legal">Legal basis</a></li>
+          <li><a href="#cleanroom">Clean-room control</a></li>
+          <li><a href="#confidence">Confidence labelling</a></li>
+          <li><a href="#trademarks">Trademarks</a></li>
+          <li><a href="#corrections">Corrections</a></li>
+        </ul>
+      </nav>
+
+      <div class="prose">
+        <section id="purpose">
+          <h2>1. Purpose: understanding and interoperability</h2>
+          <p>
+            The purpose of this work is to understand how digital mixing consoles are built,
+            and — where a project follows from that understanding — to obtain the information
+            necessary for an independently created device or program to interoperate with
+            existing equipment.
+          </p>
+          <p>Concretely, the questions each teardown sets out to answer are:</p>
+          <ul>
+            <li>Where does the audio processing actually happen — a general-purpose CPU, a fixed-function DSP, or FPGA fabric?</li>
+            <li>What is the real silicon, as opposed to what the marketing implies?</li>
+            <li>How is firmware packaged, delivered and validated?</li>
+            <li>Is there any part of the signal path a third party could legitimately extend?</li>
+          </ul>
+          <p>
+            The fourth question is the one that motivated the work. Several of our own audio
+            processing projects raised an obvious question — could this run on a console? —
+            and answering it honestly required knowing what was inside the consoles.
+            Two of the four teardowns answered <em>no</em>, and said so.
+          </p>
+        </section>
+
+        <section id="how">
+          <h2>2. How the work was done</h2>
+          <p>
+            In every case the material examined was <strong>lawfully obtained and already in
+            our possession</strong>: firmware update packages published by manufacturers for
+            their own customers, software installed under a valid licence on our own machines,
+            service manuals, and publicly available component datasheets and standards.
+          </p>
+          <p>The techniques used were:</p>
+          <ul>
+            <li>reading plain-text scripts, configuration files and build metadata;</li>
+            <li>extracting string tables and embedded build paths;</li>
+            <li>listing and demangling symbol tables and C++ RTTI type names;</li>
+            <li>statistical analysis of container files — entropy, byte histograms, index of coincidence, run-length structure;</li>
+            <li>disassembling a limited number of functions to establish which offsets are compared against which constants;</li>
+            <li>cross-referencing all of the above against manufacturer service manuals and component datasheets.</li>
+          </ul>
+
+          <div class="table-scroll">
+            <table>
+              <caption class="eyebrow" style="text-align:left;padding-bottom:.6rem">
+                Per-platform basis
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col">Platform</th>
+                  <th scope="col">Basis of analysis</th>
+                  <th scope="col">Hardware involved</th>
+                </tr>
+              </thead>
+              <tbody>
+                {analysed.map((p) => (
+                  <tr>
+                    <td class="k"><a href={`/platforms/${p.id}/`}>{p.manufacturer} {p.model}</a></td>
+                    <td>{p.method}</td>
+                    <td>None</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <div class="note warn">
+            <p style="margin:0">
+              <strong>No console has ever been opened, connected to, or modified.</strong>
+              Every finding on this site was obtained from files. Nothing has been validated
+              against physical hardware, and nothing here should be relied on for a repair,
+              a modification or a purchasing decision.
+            </p>
+          </div>
+        </section>
+
+        <section id="terms">
+          <h2>3. Two terms, used precisely</h2>
+          <p>
+            Two terms are commonly attached to work of this kind. Neither accurately
+            describes most of what is published here, and neither is claimed loosely.
+          </p>
+          <h3>This is not black-box analysis</h3>
+          <p>
+            Black-box analysis means observing only a system's external behaviour — packets
+            on the wire, inputs and outputs — without inspecting its internals. The findings
+            here come substantially from inspecting vendor binaries. Calling that black-box
+            would be false.
+          </p>
+          <h3>This is not, in general, clean-room analysis</h3>
+          <p>
+            "Clean room" is a specific organisational control: one team examines the original
+            and writes a specification containing no expressive material from it, and a second
+            team — which has never examined the original — implements solely from that
+            specification. Where no implementation exists, no such separation has been
+            established, and no clean-room claim is made. The one project that <em>does</em>
+            contemplate an implementation operates under a written clean-room policy, described
+            in <a href="#cleanroom">§7</a>.
+          </p>
+        </section>
+
+        <section id="claimed">
+          <h2>4. What is claimed instead</h2>
+          <ul>
+            <li>
+              Analysis of lawfully obtained, vendor-distributed binaries and documentation,
+              performed to extract the <strong>ideas, functional interfaces and interface
+              specifications</strong> necessary to understand the platform and to achieve
+              interoperability. Under both EU and US law those elements are not themselves
+              protected by copyright.
+            </li>
+            <li>
+              <strong>No manufacturer source code was seen, obtained or used.</strong> No NDA,
+              developer agreement, OEM agreement or SDK was in effect or relied upon. No
+              confidential material of any kind was accessed.
+            </li>
+            <li>
+              <strong>No manufacturer code is reproduced.</strong> These pages record facts
+              about silicon, wire formats, constants, identifiers and structure. Where a vendor
+              identifier is quoted — a symbol name, a build path, a numeric constant — it is
+              quoted as a factual finding, in the minimum amount required to describe the
+              interface, and not as copied expression.
+            </li>
+            <li>
+              <strong>No firmware, binary or manual is redistributed.</strong> Artifacts are
+              referenced by filename and version only. Nothing on this site will help anyone
+              obtain manufacturer software they are not already entitled to.
+            </li>
+          </ul>
+        </section>
+
+        <section id="boundaries">
+          <h2>5. Scope boundaries</h2>
+          <p>These are hard boundaries, not preferences.</p>
+          <ol class="pill-list">
+            <li>
+              <strong>No analysis of licensing, authorisation, entitlement or DRM.</strong>
+              <p>
+                If such a mechanism is encountered, analysis stops and the finding recorded is
+                only that it exists and roughly where. This happened on one platform in the
+                index, and the analysis stopped there. Interoperability exceptions are broad;
+                anti-circumvention exceptions are not, and the two must never be conflated.
+              </p>
+            </li>
+            <li>
+              <strong>Nothing that enables unlicensed use of any product.</strong>
+              <p>
+                No key algorithms, no entitlement bypasses, no methods for obtaining paid
+                features without paying for them.
+              </p>
+            </li>
+            <li>
+              <strong>No exploits, and no modification instructions.</strong>
+              <p>
+                Where a page records that a platform validates firmware with a CRC and no
+                signature, that is a structural fact about its architecture — the same class
+                of fact as which SoC it uses. It is not a vulnerability disclosure, and no
+                bypass, forged image or circumvention technique is published here.
+              </p>
+            </li>
+            <li>
+              <strong>No redistribution of manufacturer material.</strong>
+              <p>
+                No firmware images, no extracted binaries, no scanned manuals, no artwork.
+                Analysis tooling in our own repositories takes the path to an image from an
+                environment variable and ships no image.
+              </p>
+            </li>
+            <li>
+              <strong>Nothing sourced from another project's code under an incompatible licence.</strong>
+              <p>
+                Where prior open-source work exists on a platform we are building on, its
+                source is treated as off-limits and its factual claims are re-derived from
+                datasheets or our own measurements. Where that policy was breached before it
+                existed, the affected facts are marked unconfirmed rather than quietly kept.
+              </p>
+            </li>
+          </ol>
+        </section>
+
+        <section id="legal">
+          <h2>6. Legal basis</h2>
+          <p>
+            Reverse engineering for interoperability is expressly protected in the
+            jurisdictions that matter here. What follows is a summary of the basis on which
+            the work proceeds. <strong>It is not legal advice</strong>, and any project moving
+            to commercial release should take its own.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th scope="col">Instrument</th><th scope="col">Effect</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="k">EU — Directive 2009/24/EC, Art. 6</td>
+                  <td>
+                    Reproduction and translation of a program's code is permitted without
+                    authorisation where indispensable to obtain the information necessary to
+                    achieve interoperability of an independently created program, provided the
+                    information is not otherwise readily available, the acts are confined to
+                    the parts necessary, and the information is not used for anything else.
+                    <strong>Art. 8 makes this right non-waivable by contract.</strong>
+                  </td>
+                </tr>
+                <tr>
+                  <td class="k">EU — Directive 2009/24/EC, Art. 5(3)</td>
+                  <td>
+                    A lawful user may observe, study and test the functioning of a program to
+                    determine the ideas and principles underlying it.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="k">US — 17 U.S.C. §1201(f)</td>
+                  <td>
+                    Circumvention, and the development of means to do so, are permitted for the
+                    sole purpose of achieving interoperability of an independently created
+                    program. Note the narrowness: this covers interoperability, not access to
+                    protected content or entitlement systems — which is why
+                    <a href="#boundaries">boundary 1</a> exists.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="k">US — case law</td>
+                  <td>
+                    <em>Sega Enterprises v. Accolade</em> (9th Cir. 1992) and
+                    <em>Sony Computer Entertainment v. Connectix</em> (9th Cir. 2000) establish
+                    intermediate copying for the purpose of extracting unprotected functional
+                    elements as fair use.
+                  </td>
+                </tr>
+                <tr>
+                  <td class="k">Subject matter</td>
+                  <td>
+                    Interface elements are not protectable. Wire formats, protocol constants,
+                    EtherType values, message identifiers, register layouts and part numbers
+                    are functional requirements for interconnection, not creative expression.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Samba, WINE, ndiswrapper and a long list of comparable projects rest on exactly
+            this basis.
+          </p>
+        </section>
+
+        <section id="cleanroom">
+          <h2>7. The clean-room control, where an implementation is contemplated</h2>
+          <p>
+            Most of this index is documentation with no implementation attached. One project
+            is different, and it carries a written policy that binds the repository:
+          </p>
+          <ol>
+            <li>
+              <strong>Specification phase.</strong> Analysis of vendor artifacts produces a
+              specification stated in terms of observable behaviour: byte layouts, constants,
+              state machines, timing. It records no source code, no decompiled output, and no
+              algorithm expression copied from a binary.
+            </li>
+            <li>
+              <strong>Review gate.</strong> Before handoff the specification is reviewed for
+              anything expressive rather than functional, and such material is removed or
+              restated.
+            </li>
+            <li>
+              <strong>Implementation phase.</strong> Implementation proceeds from the
+              specification alone, by a person or agent that has not examined the vendor
+              binaries, with that separation recorded.
+            </li>
+            <li>
+              <strong>Provenance record.</strong> Every implementation commit traces to a
+              specification clause, and every clause traces to the evidence that produced it.
+            </li>
+          </ol>
+          <p>
+            Until step 3 has actually been performed and recorded, no clean-room claim is made
+            about any code. Where source material from an incompatibly licensed project was
+            read before that policy existed, the fact is recorded openly and every parameter
+            tracing to it is marked unconfirmed until independently re-derived.
+          </p>
+        </section>
+
+        <section id="confidence">
+          <h2>8. Confidence labelling</h2>
+          <p>
+            Every technical claim on this site carries one of four labels. They are used
+            strictly, and a claim without evidence does not get promoted because it sounds
+            likely.
+          </p>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr><th scope="col">Label</th><th scope="col">Meaning</th></tr>
+              </thead>
+              <tbody>
+                {Object.entries(confidence).map(([key, c]) => (
+                  <tr>
+                    <td class="k"><span class={`conf conf-${key}`}>{c.label}</span></td>
+                    <td>{c.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Each platform page also carries a <strong>Traps</strong> section recording mistakes
+            the analysis actually made. They are published because each one produces a
+            plausible-looking wrong answer rather than an obvious failure — which makes them
+            more useful to a reader than the findings that went smoothly.
+          </p>
+        </section>
+
+        <section id="trademarks">
+          <h2>9. Trademarks and affiliation</h2>
+          <p>
+            All manufacturer and product names on this site are the trademarks or registered
+            trademarks of their respective owners. They are used here for
+            <strong>identification only</strong> — nominative use, in a factual description of
+            the products they name.
+          </p>
+          <p>
+            Stoatworks Labs is <strong>not affiliated with, endorsed by, sponsored by, or
+            acting in cooperation with</strong> any manufacturer named on this site. Nothing
+            here is an official source of information about any product, and no manufacturer
+            has reviewed it.
+          </p>
+          <p>
+            Opening a console, modifying its firmware, or connecting unapproved equipment will
+            in all likelihood void its warranty and may render it unusable. Nothing here is a
+            recommendation to do any of those things.
+          </p>
+        </section>
+
+        <section id="corrections">
+          <h2>10. Corrections</h2>
+          <p>
+            This is research, and research has errors in it. Some claims here rest on a single
+            artifact; at least one platform's source image is no longer in our possession and
+            its findings currently cannot be re-derived. That is stated on the page rather
+            than hidden.
+          </p>
+          <p>
+            If you are a manufacturer, an engineer, or anyone else who can show that something
+            on this site is wrong, we want to fix it — and a correction from someone who
+            actually built the thing is worth more than any amount of static analysis.
+            Corrections are published, not quietly edited away.
+          </p>
+          <p>
+            Contact: <a href="https://stoatworks-labs.com">stoatworks-labs.com</a>.
+          </p>
+        </section>
+      </div>
+    </div>
+  </div>
+</Base>
