@@ -172,20 +172,22 @@
       ],
       "security": [
         { "label": "Image signing", "value": "None. No RSA, SHA or AES strings anywhere in either image", "confidence": "verified" },
-        { "label": "Update validation", "value": "CRC only — `VerifyFlash Expected CRC to be 0x%lx, but calculated 0x%lx`", "confidence": "verified" },
+        { "label": "Update validation", "value": "CRC only, and the variant was not identified — `Error in firmware header`, `VerifyFlash Expected CRC to be 0x%lx, but calculated 0x%lx`", "confidence": "verified" },
         { "label": "Bitstream encryption", "value": "Not encrypted. The CTL0 write is 0x00001501 with the DEC bit (bit 6) clear and no key-load sequence, so the bitstream is analysable", "confidence": "verified" },
         { "label": "Recovery", "value": "A/B image banks with Zynq multiboot. The update overwrites the inactive bank; the first-stage bootloader is not in the update file and is not protected by the A/B scheme", "confidence": "verified" },
         { "label": "Entitlement", "value": "An entitlement mechanism exists and was identified. Analysis stopped there — see the methodology page", "confidence": "verified" }
       ],
       "programmable": [
-        { "rank": 1, "item": "Interoperability, not rehosting", "note": "The SLink slot takes gigaACE, Dante and Waves cards, and Allen & Heath publish the SQ MIDI/TCP control protocol. This is where the value is." },
-        { "rank": 2, "item": "The PL bitstream", "note": "Unencrypted, and Project X-Ray covers Artix-7 and Zynq-7 fabric. But replacing it means writing a 48-channel 96 kHz engine against an unpublished pinout." },
-        { "rank": 3, "item": "The ARM software", "note": "Replaceable, and the Zynq is maximally Linux-friendly. It also gets you Linux wired to a black box, because none of the mixer is in the software you would be replacing." }
+        { "rank": 1, "item": "Interoperability, not rehosting", "note": "The SLink slot takes gigaACE, Dante and Waves cards, and Allen & Heath publish the SQ MIDI/TCP control protocol. Almost anything that motivated looking at the firmware in the first place is better served here, and none of it needs reverse engineering." },
+        { "rank": 2, "item": "The AXI register map — the one thing genuinely worth reversing", "note": "Map the PS↔PL interface and the black box becomes documented hardware: you could drive the stock mixing engine from your own software, which is a far better position than replacing either half. It is also reachable non-destructively, with the stock bitstream loaded and nothing written to flash." },
+        { "rank": 3, "item": "The PL bitstream", "note": "Unencrypted, and Project X-Ray covers Artix-7 and Zynq-7 fabric, so it is analysable in principle. In practice it is a very large project and it is downstream of understanding the register map anyway. Not step one." },
+        { "rank": 4, "item": "Linux on the PS", "note": "Entirely feasible and almost pointless on its own — it gets you Linux wired to a black box you cannot command. Worth doing only as a means of probing the AXI map." }
       ],
       "verdict": "A poor rehosting target, but not for the usual reasons. There is no secure boot and no signing — yet none of the mixer is in the software you would replace. If it were ever pursued, the correct first move is JTAG, not the USB update path: dump the 64 MB QSPI intact before writing anything.",
       "openQuestions": [
-        "The PL's AXI register map is entirely undocumented — this is the whole audio path.",
-        "The first-stage bootloader is not in the update file and has never been seen.",
+        "The PL's AXI register map is entirely undocumented — this is the whole audio path, and it is the single most important missing piece.",
+        "The FX board's DSPs are a genuine gap: not the vendor, not the architecture, not how code reaches them. The `FX[0]` indexing implies more than one.",
+        "The first-stage bootloader is not in the update file and has never been seen. The A/B banks protect the application images, not it.",
         "The debug UART is near-certainly populated (xuartps is linked and printf diagnostics are everywhere) but has never been located on a board."
       ],
       "traps": [
@@ -205,7 +207,7 @@
       "status": "active",
       "tags": ["SHARC", "Efinix Trion", "i.MX 6", "AES50", "Clean room"],
       "summary": "The only platform here being studied to build on rather than to understand — and the only one where the container format was analysed, found opaque, and then declared off the critical path.",
-      "headline": "The `.wingfw` container is opaque but structured, and specifically not a block cipher: index of coincidence is flat at 3.06 across every stride from 1 to 1024, and all 171 constant runs of ≥64 bytes are 0xFF with zero 0x00 runs. No block cipher leaves those.",
+      "headline": "The `.wingfw` container is opaque but structured, and specifically not a block cipher: the index of coincidence is flat across every stride from 1 to 1024, so there is no repeating key — and all 171 constant runs of ≥64 bytes are 0xFF with not one 0x00 run. No block cipher leaves those.",
       "method": "Static analysis of a vendor firmware image, plus published datasheets and standards. No hardware has been acquired, so every hardware row is provisional and marked accordingly. A written clean-room policy governs the project.",
       "artifacts": [
         "A `.wingfw` release image, version 3.1.1 (fullsize variant — nothing learned from it may be assumed to hold for Compact)",
@@ -228,7 +230,9 @@
       ],
       "software": [
         { "label": "Boot path", "value": "The i.MX 6 has a documented, public boot ROM with a USB serial-download path. This is the fact that makes the whole project viable", "confidence": "public" },
-        { "label": "Container", "value": "`.wingfw` — entropy 7.37 overall, first 2 MB flat at 8.00, remainder 6.1–7.5; byte histogram strongly skewed low; no signature found plain or under 514 cheap transforms; no ECB structure", "confidence": "verified" },
+        { "label": "Container", "value": "`.wingfw`, 38,873,600 bytes for the 3.1.1 fullsize release — no header and no magic. Entropy 7.37 bits/byte overall, first 2 MB flat at 8.00, remainder 6.1–7.5", "confidence": "verified" },
+        { "label": "Container — byte statistics", "value": "Histogram strongly skewed low: 0x00 at 5.6%, then 0x02, 0x01, 0x08 and 0x0f each around 2.6–3.0% against a uniform 0.39%. That rules out AES over the bulk. Index of coincidence flat across every stride 1–1024, so no repeating XOR key. No ECB structure", "confidence": "verified" },
+        { "label": "Container — negative sweeps", "value": "No squashfs, ELF, gzip, xz, zstd, UBI, JFFS2, cramfs, DTB, uImage, zImage or i.MX IVT magic — none plain, and none under 256 XOR constants, 256 additive constants, nibble swap, bit reversal or positional XOR. A brute-force deflate/zlib/LZMA sweep over the first 8 MB returned zero hits", "confidence": "verified" },
         { "label": "Container verdict", "value": "Opaque but structured, and not a block cipher. Decoding it is never required in order to write a replacement OS", "confidence": "inferred" },
         { "label": "DSP toolchain", "value": "ADI CrossCore — proprietary, licensed", "confidence": "public" },
         { "label": "FPGA toolchain", "value": "Efinix Efinity — free, but proprietary", "confidence": "public" }
@@ -238,9 +242,10 @@
         { "label": "Container", "value": "Obfuscated by a mechanism not yet identified. Analysed, unsolved, and off the critical path", "confidence": "unknown" }
       ],
       "programmable": [
-        { "rank": 1, "item": "The application processor", "note": "Subject to the HAB question, this is a conventional ARM SoC with a public boot ROM." },
-        { "rank": 2, "item": "The four SHARCs", "note": "Documented parts. Bringing them up from nothing, alongside the Trion bitstream and AES50, is the mountain." },
-        { "rank": 3, "item": "USB audio on the host port", "note": "The measurement path that can never be blocked by the FPGA and DSP work — deliberately staged first for exactly that reason." }
+        { "rank": 1, "item": "The i.MX 6 boot ROM, over USB OTG", "note": "Publicly documented in the NXP reference manual, requires no cooperation from the stock software, and is also the recovery path — which is why it is the one route worth proving before anything else is attempted. Conditional on the HAB fuses." },
+        { "rank": 2, "item": "USB audio on the host port", "note": "A measurement path that sidesteps the converter, TDM and DSP problem entirely, so it can never be blocked by the hard part. Deliberately staged first for exactly that reason." },
+        { "rank": 3, "item": "The four SHARCs and the Trion fabric", "note": "Documented parts. Bringing them up from nothing, alongside AES50, is the mountain — and the whole open-ended schedule risk lives here." },
+        { "rank": 4, "item": "The stock update path", "note": "Ranked last on purpose. It needs the container solved, and the container is explicitly not on the critical path: writing a replacement OS never requires reading the manufacturer's image." }
       ],
       "verdict": "Hardware-wise the most open platform surveyed, and the only one where a full replacement OS is a coherent goal. Everything now rests on two cheap lid-off questions and one fuse.",
       "openQuestions": [
