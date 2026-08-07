@@ -1,0 +1,25 @@
+{
+  // Deployed as a Worker serving static assets — which is what Cloudflare's
+  // "Import a repository" flow creates, and what every other hosted app in this
+  // fleet uses. A classic Pages project would ignore this file and just publish
+  // `dist`; note that `pages_build_output_dir` in a Worker repo fails with a
+  // misleading "could not detect a directory containing static files".
+  //
+  // Deploy:  npm run build && cf-run npx wrangler deploy
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "console-internals",
+  "compatibility_date": "2026-07-30",
+
+  // Kept explicitly true so that attaching a custom domain later does not
+  // silently take the workers.dev URL offline — wrangler defaults this to false
+  // as soon as `routes` exists, and every published link to the old host 404s
+  // from that deploy on.
+  "workers_dev": true,
+
+  "assets": {
+    "directory": "./dist",
+    // The site has a real 404 page; route unmatched paths to it rather than to a
+    // bare Cloudflare error.
+    "not_found_handling": "404-page"
+  }
+}
