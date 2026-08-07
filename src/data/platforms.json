@@ -487,50 +487,50 @@
       "status": "documented",
       "tags": [
         "Zynq UltraScale+",
-        "FPGA-fabric DSP",
+        "Spartan-7 DSP",
         "Ubuntu 24.04 aarch64",
         "Signed update",
         "VSKP/ECP/OSC",
-        "Dante/AES67"
+        "AES67"
       ],
-      "summary": "A headless FPGA console whose mixing DSP is reconfigurable programmable-logic fabric loaded at every boot, running a full Ubuntu userland on a Zynq UltraScale+ MPSoC — and whose update package quietly reveals the OEM behind the brand.",
-      "headline": "The v1.2.3 update is a self-decrypting installer that unpacks to ten arm64 Debian packages. Their maintainer fields name the real makers — DSPRO Audio of Brazil for the platform, and audio developer George Yohng for the mixer core — while the payload ships the two Vivado bitstreams (`mixer128_main.bit`, `mixer128_aux.bit`) that ARE the mixing engine, loaded onto the PL through the Linux fpga_manager.",
-      "method": "Static analysis of the single `dmix128_1.2.3.7045c05.dmixfw` update package: parsing the installer ELF, decrypting and unpacking its payload, and reading the resulting package control metadata, hardware-driver Python, FPGA register-map JSON and boot artifacts. No console was involved and no hardware was inspected.",
+      "summary": "A headless FPGA console that splits its work across three silicon tiers — a Zynq UltraScale+ running full Ubuntu for control, and a pair of dedicated Spartan-7 FPGAs doing the actual mixing — with an update package that quietly names the OEM behind the brand.",
+      "headline": "The v1.2.3 update unpacks to ten arm64 Debian packages plus the FPGA images. The mixing engine is not the host SoC's fabric but two separate Spartan-7 XC7S50 devices (`mixer128_main.bit`, `mixer128_aux.bit`, Vivado 2025.1), each booting from its own SPI-NOR flash; the Zynq UltraScale+ is the Ubuntu host and the effects run on it via a separate DSP server.",
+      "method": "Static analysis of the single `dmix128_1.2.3.7045c05.dmixfw` update package — parsing the installer ELF, decrypting and unpacking its payload, reading the resulting package control metadata, the mypyc-compiled Python driver layer, the FPGA register-map JSON and the bitstream headers — cross-checked against the vendor's front-panel photo. No console was involved and no hardware was inspected.",
       "artifacts": [
         "`dmix128_1.2.3.7045c05.dmixfw` — 70 MB update package (a stripped aarch64 ELF installer stub with an encrypted payload appended)",
         "Ten `arm64` `.deb` packages: `dsmix`, `fxserver-zynq`, `mixer-web`, `mixer-extcontrol`, `mixer-local-gui`, `mixer-upgradedaemon-ng`, `nmos-bridge`, `button-monitor`, `xilinx-prog-zynqmp`, plus stock `avahi-utils`",
-        "`mixer128_main.bit` / `mixer128_aux.bit` — Vivado FPGA bitstreams; `dsmix_zu3.bin` / `dsmix_zu5.bin` — ZynqMP boot images",
-        "`Driver/Profiles/mixer128` and `mixer64` — JSON DSP register/routing maps; `Driver/misc/*.py` — hardware drivers"
+        "`mixer128_main.bit` / `mixer128_aux.bit` — Spartan-7 XC7S50 bitstreams; `dsmix_zu3.bin` / `dsmix_zu5.bin` — ZynqMP boot/PL images",
+        "`Driver/Profiles/mixer128` and `mixer64` JSON DSP register maps; `Driver/misc/*.py` hardware drivers; the vendor front-panel line-art"
       ],
       "hardware": [
         {
-          "label": "SoC",
-          "value": "Xilinx Zynq UltraScale+ MPSoC (quad Cortex-A53 + programmable logic). The installer branches on a device-tree `device_id` of `zu3eg` or `zu5eg`",
+          "label": "Host SoC",
+          "value": "Xilinx Zynq UltraScale+ MPSoC (quad Cortex-A53) running the control software; the installer branches on a device-tree `device_id` of `zu3eg` or `zu5eg`, and its programmable logic is loaded from `dsmix_zu3.bin` / `dsmix_zu5.bin` for I/O and interconnect",
           "confidence": "verified"
         },
         {
           "label": "Model / SoC pairing",
-          "value": "ZU3EG and ZU5EG boot images ship side by side (`dsmix_zu3.bin` / `dsmix_zu5.bin`); read as the smaller ZU3EG serving dMix 64 and the larger ZU5EG serving dMix 128",
+          "value": "Read as the smaller ZU3EG serving dMix 64 and the larger ZU5EG serving dMix 128 (both boot images ship together)",
           "confidence": "inferred"
         },
         {
           "label": "Mixing DSP",
-          "value": "Reconfigurable FPGA fabric — two `.bit` bitstreams (`main` + `aux`) programmed onto the PL at boot via the mainline `fpga_manager` (`/sys/class/fpga_manager/fpga0/state`). No fixed-function mixing silicon",
+          "value": "Two dedicated Xilinx Spartan-7 XC7S50 FPGAs — the bitstream headers name `mixer128_main` and `mixer128_aux`, part `7s50csga324`, Vivado 2025.1. Each boots from its own SPI-NOR config flash and is addressed by a `CORE_ID` / `fpga_sel` selector; the host reprograms them over SPI",
           "confidence": "verified"
         },
         {
-          "label": "Clocking",
-          "value": "Renesas VersaClock 6E generator, OTP-programmed over I²C by an in-tree driver",
+          "label": "Effects DSP",
+          "value": "The FX rack (reverb, delay, chorus, a DX480-style processor) runs on the host via `fxserver-zynq`, separate from the Spartan-7 mixing cores",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Converters & clocking",
+          "value": "AKM AK5558 8-channel ADCs and AK4454 DACs in I²C-addressed slots, carried to the fabric over TDM. Renesas VersaClock 6E master generator (I²C, OTP-programmed); network clock recovered by a software DPLL",
           "confidence": "verified"
         },
         {
-          "label": "Board support",
-          "value": "ADS1x15 ADC, PCA9536 GPIO expander, FTDI link and SPI NOR flash, driven from Python; hardware revision read from ZynqMP GPIO",
-          "confidence": "verified"
-        },
-        {
-          "label": "Audio I/O",
-          "value": "96 kHz throughout; 32 head-amps, 32 AD / 28 DA, 2 AES3, 64 MADI, and 384 network (Dante/AES67) channels in the fabric map",
+          "label": "Physical I/O",
+          "value": "3U front-I/O stagebox: 32× XLR mic/line in (phantom + head-amp), 24× XLR out, 2× AES/EBU in+out, 2× ¼\" phones, MADI in/out on BNC coax, a CONTROL etherCON and redundant `dNet A/B` etherCON (AES67, copper), DisplayPort video for the local GUI, USB-A + USB-C (with USB-PD), one option-card slot, dual redundant PSU",
           "confidence": "verified"
         }
       ],
@@ -547,12 +547,12 @@
         },
         {
           "label": "Mixer application",
-          "value": "`dsmix` is mypyc-compiled Python: a `Driver/` hardware-abstraction layer plus JSON register/routing maps for both `mixer128` and `mixer64` profiles. `fxserver-zynq` is the FX/DSP server against the fabric",
+          "value": "`dsmix` is mypyc-compiled Python: a `Driver/` hardware-abstraction layer plus JSON register/routing maps for both `mixer128` and `mixer64` profiles, driving the Spartan-7 cores. `fxserver-zynq` is the host-side FX server",
           "confidence": "verified"
         },
         {
           "label": "Control plane",
-          "value": "`mixer-extcontrol` (Go) serves the external protocols — ECP (Q-SYS), QRC, the zero-based VSKP keyspace and OSC — and additionally embeds an MCP/LLM \"assistant\" with an instrument-EQ preset knowledge base",
+          "value": "`mixer-extcontrol` (Go) serves the external protocols — ECP (Q-SYS), QRC, the zero-based VSKP keyspace and OSC — plus a Socket.IO/WebSocket layer on port 80. It additionally embeds an MCP/LLM \"assistant\" with an instrument-EQ preset knowledge base",
           "confidence": "verified"
         },
         {
@@ -586,13 +586,13 @@
       "programmable": [
         {
           "rank": 1,
-          "item": "The mixing engine is an FPGA bitstream",
-          "note": "`mixer128_main.bit` and `mixer128_aux.bit` are loaded onto the PL at boot; the audio path is defined by programmable logic and the JSON register maps in `dsmix`, not by fixed silicon — the direct contrast to the Yamaha QL entry."
+          "item": "The mixing engine is two Spartan-7 bitstreams",
+          "note": "`mixer128_main.bit` and `mixer128_aux.bit` configure a pair of XC7S50 DSP FPGAs from their own SPI flash; the audio path is defined by programmable logic and the JSON register maps in `dsmix`, not by fixed silicon — the direct contrast to the Yamaha QL entry, but with the DSP split off the host SoC entirely."
         },
         {
           "rank": 2,
           "item": "Zero-based VSKP keyspace over `mixer-extcontrol`",
-          "note": "Dot-delimited keys such as `i.0.eq.b1.freq`, with `*` matching one component and `**` many. The same daemon also exposes ECP (Q-SYS), QRC and OSC."
+          "note": "Dot-delimited keys such as `i.0.eq.b1.freq`, with `*` matching one component and `**` many. The same daemon also exposes ECP (Q-SYS), QRC, OSC and a Socket.IO layer."
         },
         {
           "rank": 3,
@@ -600,15 +600,15 @@
           "note": "`mixer-extcontrol` ships an agent that drives the console over MCP tools using an instrument-EQ knowledge base — an LLM-facing control surface baked into the firmware."
         }
       ],
-      "verdict": "The most conventional computer in the index: a signed-and-encrypted Ubuntu appliance on a Zynq UltraScale+, where the mixing \"hardware\" is a bitstream shipped inside the same update as the web GUI. The teardown's real payoff is naming the OEM the brand doesn't — DSPRO Audio and George Yohng.",
+      "verdict": "The most computer-like entry in the index, and the most tiered: an Ubuntu host on a Zynq UltraScale+ hands the mixing math to two dedicated Spartan-7 FPGAs and keeps the effects for itself, all shipped — bitstreams, web GUI and RSA-signed installer — in one update. The teardown's real payoff is naming the OEM the brand doesn't: DSPRO Audio and George Yohng.",
       "openQuestions": [
-        "Whether the ZU3EG/ZU5EG split maps exactly to dMix 64 / dMix 128, and what the `main` vs `aux` bitstream division corresponds to in the signal path.",
-        "How much of the mixing math lives in the PL fabric versus the `fxserver-zynq` process, since the DSP register maps are declarative JSON.",
-        "Nothing here was checked against a running console; all findings are from the update package alone."
+        "Exactly how the `main` and `aux` Spartan-7 cores divide the channels and buses between them.",
+        "How much mixing runs in the Spartan-7 pair versus the Zynq PL versus the `fxserver-zynq` process.",
+        "Nothing here was checked against a running console; all findings are from the update package and public images alone."
       ],
       "traps": [
         "The `.dmixfw` is not an archive — it is an executable installer with an encrypted payload appended after the ELF section headers, so ordinary archive tools see only a stripped binary.",
-        "The mixing DSP has no persistent firmware image on a flash chip to dump: it is a bitstream re-loaded into volatile fabric at every boot."
+        "The bitstreams target part `7s50csga324` — a Spartan-7, not the Zynq's own fabric; the mixing DSP is separate silicon from the host SoC, which is easy to misread as the SoC's PL."
       ]
     },
 
