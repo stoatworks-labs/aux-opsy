@@ -46,23 +46,32 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
         <section id="purpose">
           <h2>1. Purpose: understanding and interoperability</h2>
           <p>
-            The purpose of this work is to understand how digital mixing consoles are built,
-            and — where a project follows from that understanding — to obtain the information
-            necessary for an independently created device or program to interoperate with
-            existing equipment.
+            The purpose of this work is to understand how live production equipment is built —
+            digital mixing consoles and video presentation switchers — and, where a project
+            follows from that understanding, to obtain the information necessary for an
+            independently created device or program to interoperate with existing equipment.
           </p>
           <p>Concretely, the questions each teardown sets out to answer are:</p>
           <ul>
-            <li>Where does the audio processing actually happen — a general-purpose CPU, a fixed-function DSP, or FPGA fabric?</li>
+            <li>Where does the processing actually happen — a general-purpose CPU, a fixed-function DSP, or FPGA fabric?</li>
             <li>What is the real silicon, as opposed to what the marketing implies?</li>
             <li>How is firmware packaged, delivered and validated?</li>
             <li>Is there any part of the signal path a third party could legitimately extend?</li>
+            <li>Where a manufacturer sells several models on one platform, what actually differs between them?</li>
           </ul>
           <p>
             The fourth question is the one that motivated the work. Several of our own audio
-            processing projects raised an obvious question — could this run on a console? —
-            and answering it honestly required knowing what was inside the consoles.
-            Two of the four teardowns answered <em>no</em>, and said so.
+            and video processing projects raised an obvious question — could this run on the
+            box itself? — and answering it honestly required knowing what was inside the
+            boxes. Several of the teardowns answered <em>no</em>, and said so.
+          </p>
+          <p>
+            The fifth question was added when the video switchers were examined, because it
+            is where they differ most sharply from one another. It is a question about
+            <em>architecture</em> — how many processing cards are in the frame, whether one
+            firmware image serves the whole range — and it is answered from build artifacts
+            in exactly the way the other four are. It is not an analysis of licensing or
+            entitlement, which <a href="#boundaries">boundary 1</a> puts out of scope.
           </p>
         </section>
 
@@ -110,10 +119,10 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
 
           <div class="note warn">
             <p style="margin:0">
-              <strong>No console has ever been opened, connected to, or modified.</strong>
-              Every finding on this site was obtained from files. Nothing has been validated
-              against physical hardware, and nothing here should be relied on for a repair,
-              a modification or a purchasing decision.
+              <strong>No console or switcher has ever been opened, connected to, or
+              modified.</strong> Every finding on this site was obtained from files. Nothing
+              has been validated against physical hardware, and nothing here should be relied
+              on for a repair, a modification or a purchasing decision.
             </p>
           </div>
         </section>
@@ -371,9 +380,9 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
             has reviewed it.
           </p>
           <p>
-            Opening a console, modifying its firmware, or connecting unapproved equipment will
-            in all likelihood void its warranty and may render it unusable. Nothing here is a
-            recommendation to do any of those things.
+            Opening any of this equipment, modifying its firmware, or connecting unapproved
+            devices to it will in all likelihood void its warranty and may render it unusable.
+            Nothing here is a recommendation to do any of those things.
           </p>
         </section>
 

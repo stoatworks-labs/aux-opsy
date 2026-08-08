@@ -9,18 +9,19 @@ const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
 ---
 
 <Base
-  title="Aux-opsy — how digital mixing consoles are actually built"
-  description="Independent reverse-engineering research on digital mixing console platforms: where the audio processing really happens, what the silicon really is, and how firmware is packaged and validated."
+  title="Aux-opsy — how live production hardware is actually built"
+  description="Independent reverse-engineering research on live production platforms — digital mixing consoles and video presentation switchers: where the processing really happens, what the silicon really is, and how firmware is packaged and validated."
   section="home"
 >
   <section class="band">
     <div class="wrap">
       <p class="eyebrow">Stoatworks Labs · research</p>
-      <h1 style="max-width:19ch">How digital mixing consoles are actually built</h1>
+      <h1 style="max-width:21ch">How live production hardware is actually built</h1>
       <p class="lede">
-        Independent teardowns of the platforms behind live-sound consoles — derived from
-        published firmware, service manuals and datasheets, with every claim labelled by how
-        well it is evidenced. No console was opened. Nothing here has been tested on hardware.
+        Independent teardowns of the platforms behind live-sound consoles and video
+        presentation switchers — derived from published firmware, service manuals and
+        datasheets, with every claim labelled by how well it is evidenced. Nothing here has
+        been opened, connected to, or tested on hardware.
       </p>
       <p style="margin-top:1.75rem">
         <a href="/platforms/">Browse the platform index →</a>
@@ -34,24 +35,30 @@ const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
     <section class="prose" style="padding-top:2.75rem">
       <h2 style="margin-top:0">The question this started from</h2>
       <p>
-        We build audio processing software — equal-loudness EQ, zero-latency dynamics, sound
-        level measurement. Each of those raised the same obvious question: <em>could this run
-        on a console?</em> Answering it honestly meant finding out what is inside the
-        consoles, which turned out to be a considerably more interesting question than the one
-        we started with.
+        We build audio and video processing software — equal-loudness EQ, zero-latency
+        dynamics, sound level measurement, scopes, routers, media playback. Each of those
+        raised the same obvious question: <em>could this run on the box itself?</em> Answering
+        it honestly meant finding out what is inside the boxes, which turned out to be a
+        considerably more interesting question than the one we started with.
       </p>
       <p>
-        The short version is that the industry has quietly split into two architectures. On
-        one side are platforms where the mixing is fixed-function silicon or FPGA fabric, and
-        the megabytes of firmware you can download contain none of the audio path at all. On
-        the other are platforms running a conventional operating system where the DSP arrives
-        as a loadable image. The difference is invisible from the front panel and decides
-        everything about what a third party could ever do with the machine.
+        The short version is that this equipment has quietly split into two architectures. On
+        one side are platforms where the processing is fixed-function silicon or FPGA fabric,
+        and the megabytes of firmware you can download contain none of the signal path at all.
+        On the other are platforms running a conventional operating system where the
+        processing arrives as a loadable image. The difference is invisible from the front
+        panel and decides everything about what a third party could ever do with the machine.
+      </p>
+      <p>
+        The video switchers turned out to sharpen a second question the consoles only hinted
+        at: when a manufacturer sells the same frame at four price points, which of those
+        tiers are actually different machines? The answers vary by more than you would expect
+        within a single manufacturer's own catalogue.
       </p>
 
       <div class="note">
         <p style="margin:0">
-          <strong>Two of the four teardowns concluded "no".</strong> That is the useful part.
+          <strong>Several of these teardowns concluded "no".</strong> That is the useful part.
           A negative result reached with evidence — <em>these DSPs have no instruction memory,
           and here is the absence that proves it</em> — is worth more than an optimistic
           maybe, and it is recorded here as prominently as anything else.
@@ -67,7 +74,7 @@ const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
             <tr><th scope="col">Section</th><th scope="col">What it answers</th></tr>
           </thead>
           <tbody>
-            <tr><td class="k">Hardware architecture</td><td>The real silicon — SoC, mixing DSP, FPGA, converters, memory, panel MCUs, network — with the evidence for each part number.</td></tr>
+            <tr><td class="k">Hardware architecture</td><td>The real silicon — SoC, processing DSP or FPGA, converters, memory, card and panel MCUs, network — with the evidence for each part number.</td></tr>
             <tr><td class="k">Software architecture</td><td>Operating system or lack of one, core model, load addresses, task structure, what fraction of the image is actually code.</td></tr>
             <tr><td class="k">Update &amp; security model</td><td>How firmware is packaged, and how the device decides an image is acceptable. Structural facts, not exploits.</td></tr>
             <tr><td class="k">What is programmable</td><td>Ranked, honestly. Often the answer is "not the part you wanted".</td></tr>
@@ -102,6 +109,11 @@ const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
 
     <section class="prose">
       <h2>How to read this</h2>
+      <p>
+        The index covers two strands. Consoles came first, and video presentation switchers
+        followed the same method; the class filter on the
+        <a href="/platforms/">platform index</a> separates them if you only want one.
+      </p>
       <p>
         Every row in every table carries a confidence label:
         <span class="conf conf-verified">Verified</span> means it was read directly out of an

@@ -5,9 +5,10 @@
 > content* is drawn from private research repositories and, as the site itself says
 > throughout, almost none of it has been verified against physical hardware.
 
-The public face of Stoatworks Labs' reverse-engineering research into digital mixing console
-platforms. A statement of method and legal position, plus a sortable, searchable index of the
-platforms examined, each with a detailed hardware and software architecture breakdown.
+The public face of Stoatworks Labs' reverse-engineering research into live production
+platforms — digital mixing consoles and video presentation switchers. A statement of method
+and legal position, plus a sortable, searchable index of the platforms examined, each with a
+detailed hardware and software architecture breakdown.
 
 **Astro, static output, zero runtime dependencies, no CSS framework** — the same posture as
 the main Stoatworks Labs site, and the same navy brand tokens, so the two read as one house.

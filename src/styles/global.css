@@ -367,6 +367,15 @@ select.sort {
 .pill-list strong { font-weight: 600; }
 .pill-list p { margin: .3rem 0 0; color: var(--ink-2); font-size: .92rem; }
 
+/* Third-party open projects — one block per project. Hairline left rule rather
+   than a boxed card, so it reads as annotation on our findings, not as a
+   competing catalogue entry. */
+.proj { border-left: 2px solid var(--line); padding: .1rem 0 .1rem 1.1rem; margin: 1.5rem 0; }
+.proj h3 { margin: 0 0 .5rem; font-size: 1.02rem; }
+.proj .card-meta { margin-bottom: .6rem; }
+.proj > p.prose:first-of-type { margin-top: 0; }
+.proj ul.prose { margin-bottom: 0; }
+
 .toc { position: sticky; top: 76px; align-self: start; font-size: .88rem; }
 .toc ul { list-style: none; padding: 0; margin: .5rem 0 0; display: grid; gap: .35rem; }
 .toc a { color: var(--ink-2); text-decoration: none; }

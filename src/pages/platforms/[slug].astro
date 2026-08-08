@@ -13,6 +13,10 @@ const statusMeta = statuses.find((s) => s.id === p.status);
 // A candidate entry has no findings to render, so most sections collapse away.
 const hasFindings = p.hardware.length > 0 || p.software.length > 0;
 
+// `openProjects` is optional — most platforms have no third-party open project
+// on them, and the section collapses away entirely when the array is absent.
+const openProjects = p.openProjects ?? [];
+
 const sections = [
   ['summary', 'Summary'],
   hasFindings && ['method', 'Method'],
@@ -20,6 +24,7 @@ const sections = [
   p.software.length > 0 && ['software', 'Software'],
   p.security.length > 0 && ['security', 'Update & security'],
   p.programmable.length > 0 && ['programmable', 'What is programmable'],
+  openProjects.length > 0 && ['projects', 'Third-party open projects'],
   p.traps.length > 0 && ['traps', 'Traps'],
   ['open', 'Open questions'],
 ].filter(Boolean);
@@ -28,12 +33,25 @@ function Conf(level) {
   return { cls: `conf conf-${level}`, label: confidence[level].label, note: confidence[level].note };
 }
 
+// Inline formatting for strings out of platforms.json: `code`, **bold** and
+// *italic*. Code spans are lifted out first, so an asterisk sitting *inside*
+// one — the dMix key wildcard is literally `**`, and enum names like `DEV_*`
+// end in one — can never be read as emphasis. Bold runs before italic so the
+// two-asterisk form is consumed whole and never seen as a nested single pair.
+function fmt(s) {
+  const spans = [];
+  let out = s.replace(/`([^`]+)`/g, (_m, c) => `\u0000${spans.push(c) - 1}\u0000`);
+  out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+  out = out.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  return out.replace(/\u0000(\d+)\u0000/g, (_m, i) => `<code>${spans[i]}</code>`);
+}
+
 const site = Astro.site.href.replace(/\/$/, '');
 const pageUrl = `${site}/platforms/${p.id}/`;
 
 // TechArticle rather than Article: these are technical documentation about a
 // named product. `about` carries the product identity so the page can be
-// matched to the console it describes, and isBasedOn records that the findings
+// matched to the device it describes, and isBasedOn records that the findings
 // derive from firmware artifacts rather than from testing hardware.
 const schema = [
   {
@@ -56,7 +74,7 @@ const schema = [
       }),
     },
     ...(p.artifacts.length > 0 && {
-      isBasedOn: p.artifacts.map((a) => a.replace(/`/g, '')),
+      isBasedOn: p.artifacts.map((a) => a.replace(/[`*]/g, '')),
     }),
     articleSection: 'Reverse engineering',
   },
@@ -104,26 +122,26 @@ const schema = [
       <div>
         <section id="summary">
           <div class="note">
-            <p style="margin:0"><strong>The load-bearing finding.</strong> {p.headline}</p>
+            <p style="margin:0"><strong>The load-bearing finding.</strong> <span set:html={fmt(p.headline)} /></p>
           </div>
-          <p class="prose"><strong>Verdict.</strong> {p.verdict}</p>
+          <p class="prose"><strong>Verdict.</strong> <span set:html={fmt(p.verdict)} /></p>
         </section>
 
         {hasFindings && (
           <section id="method">
             <h2>Method</h2>
-            <p class="prose">{p.method}</p>
+            <p class="prose" set:html={fmt(p.method)} />
             {p.artifacts.length > 0 && (
               <>
                 <h3>Artifacts examined</h3>
                 <ul class="prose">
-                  {p.artifacts.map((a) => <li set:html={a.replace(/`([^`]+)`/g, '<code>$1</code>')} />)}
+                  {p.artifacts.map((a) => <li set:html={fmt(a)} />)}
                 </ul>
               </>
             )}
             <p class="prose" style="color:var(--ink-2);font-size:.93rem">
               No manufacturer firmware, binaries or documentation are redistributed here.
-              Artifacts are referenced by name and version only. See the
+              Artifacts are referenced by name and version only. See the{' '}
               <a href="/method/">method and legal statement</a> for the basis on which this
               analysis was performed and the boundaries it observes.
             </p>
@@ -142,7 +160,7 @@ const schema = [
                   {p.hardware.map((h) => (
                     <tr>
                       <td class="k">{h.label}</td>
-                      <td set:html={h.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td set:html={fmt(h.value)} />
                       <td><span class={Conf(h.confidence).cls} title={Conf(h.confidence).note}>{Conf(h.confidence).label}</span></td>
                     </tr>
                   ))}
@@ -164,7 +182,7 @@ const schema = [
                   {p.software.map((s) => (
                     <tr>
                       <td class="k">{s.label}</td>
-                      <td set:html={s.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td set:html={fmt(s.value)} />
                       <td><span class={Conf(s.confidence).cls} title={Conf(s.confidence).note}>{Conf(s.confidence).label}</span></td>
                     </tr>
                   ))}
@@ -186,7 +204,7 @@ const schema = [
                   {p.security.map((s) => (
                     <tr>
                       <td class="k">{s.label}</td>
-                      <td set:html={s.value.replace(/`([^`]+)`/g, '<code>$1</code>')} />
+                      <td set:html={fmt(s.value)} />
                       <td><span class={Conf(s.confidence).cls} title={Conf(s.confidence).note}>{Conf(s.confidence).label}</span></td>
                     </tr>
                   ))}
@@ -209,11 +227,45 @@ const schema = [
             <ol class="pill-list">
               {p.programmable.map((x) => (
                 <li>
-                  <span class="n">{x.rank}</span><strong>{x.item}</strong>
-                  <p>{x.note}</p>
+                  <span class="n">{x.rank}</span><strong set:html={fmt(x.item)} />
+                  <p set:html={fmt(x.note)} />
                 </li>
               ))}
             </ol>
+          </section>
+        )}
+
+        {openProjects.length > 0 && (
+          <section id="projects">
+            <h2>Third-party open projects</h2>
+            <p class="prose" style="color:var(--ink-2)">
+              Independent open-source work on this platform, recorded because it is prior art
+              and because in places it confirms or corrects findings above. These are other
+              people's projects: the descriptions are ours, the work is theirs, and nothing
+              from them is reproduced here.
+            </p>
+            {openProjects.map((op) => (
+              <div class="proj">
+                <h3>
+                  <a href={op.url} rel="noopener">{op.name}</a>
+                </h3>
+                <div class="card-meta">
+                  <span class="tag">{op.licence}</span>
+                  <span class="tag">{op.activity}</span>
+                  <span class={Conf('public').cls} title={Conf('public').note}>{Conf('public').label}</span>
+                </div>
+                <p class="prose" set:html={fmt(op.what)} />
+                <ul class="prose">
+                  {op.points.map((pt) => <li set:html={fmt(pt)} />)}
+                </ul>
+              </div>
+            ))}
+            <p class="prose" style="color:var(--ink-2);font-size:.93rem">
+              Licence note: these projects are GPL-3.0. Facts about them — part numbers,
+              what boots, what does not — are not copyrightable and are recorded freely.
+              Their source is not a source for our own differently-licensed work, and no code
+              from them is used in it.
+            </p>
           </section>
         )}
 
@@ -226,7 +278,7 @@ const schema = [
               failure.
             </p>
             <ul class="prose">
-              {p.traps.map((t) => <li set:html={t.replace(/`([^`]+)`/g, '<code>$1</code>')} />)}
+              {p.traps.map((t) => <li set:html={fmt(t)} />)}
             </ul>
           </section>
         )}
@@ -234,7 +286,7 @@ const schema = [
         <section id="open">
           <h2>Open questions</h2>
           <ul class="prose">
-            {p.openQuestions.map((o) => <li>{o}</li>)}
+            {p.openQuestions.map((o) => <li set:html={fmt(o)} />)}
           </ul>
           <div class="note warn">
             <p style="margin:0">

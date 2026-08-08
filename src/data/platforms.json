@@ -381,7 +381,7 @@
       ],
       "hardware": [
         { "label": "SoC", "value": "NXP i.MX 6 series, ARM Cortex-A9, MAPBGA 624", "confidence": "public" },
-        { "label": "Core count", "value": "1 (Solo-class) — to be confirmed by reading SCU config on hardware", "confidence": "inferred" },
+        { "label": "Core count", "value": "1 (Solo-class) on the Compact — to be confirmed by reading SCU config on hardware. Note that OpenWING's device tree for the *fullsize* WING is named `imx6dl`, i.e. DualLite and dual-core. That does not settle the Compact, but it does rule out assuming one answer across the family", "confidence": "inferred" },
         { "label": "DRAM", "value": "1 GB at architectural base 0x10000000. Size unconfirmed — read the part markings", "confidence": "unknown" },
         { "label": "Boot flash", "value": "SPI-NOR, ~8 MB, s25fl064k-class. Unconfirmed", "confidence": "unknown" },
         { "label": "DSP", "value": "4 × Analog Devices ADSP-21489 SHARC — where the mixing actually happens", "confidence": "inferred" },
@@ -395,16 +395,19 @@
       ],
       "software": [
         { "label": "Boot path", "value": "The i.MX 6 has a documented, public boot ROM with a USB serial-download path. This is the fact that makes the whole project viable", "confidence": "public" },
-        { "label": "Container", "value": "`.wingfw`, 38,873,600 bytes for the 3.1.1 fullsize release — no header and no magic. Entropy 7.37 bits/byte overall, first 2 MB flat at 8.00, remainder 6.1–7.5", "confidence": "verified" },
+        { "label": "Container", "value": "`.wingfw`, 38,873,600 bytes for the 3.1.1 fullsize release — no header and no magic. The image is **not stationary**, so averaging over it misleads: the head (`0x00000000`–`0x00230000`) measures entropy 7.9999 with an index of coincidence of 1.0000, exactly uniform on both, while the bulk beyond it measures 7.3006 and 3.0321. The split is the finding", "confidence": "verified" },
+        { "label": "Container — constant runs", "value": "171 constant runs of 64 bytes or more, 92,706 bytes in total, and **every one of them is 0xFF** — not a single 0x00 run. No block cipher leaves those intact", "confidence": "verified" },
         { "label": "Container — byte statistics", "value": "Histogram strongly skewed low: 0x00 at 5.6%, then 0x02, 0x01, 0x08 and 0x0f each around 2.6–3.0% against a uniform 0.39%. That rules out AES over the bulk. Index of coincidence flat across every stride 1–1024, so no repeating XOR key. No ECB structure", "confidence": "verified" },
         { "label": "Container — negative sweeps", "value": "No squashfs, ELF, gzip, xz, zstd, UBI, JFFS2, cramfs, DTB, uImage, zImage or i.MX IVT magic — none plain, and none under 256 XOR constants, 256 additive constants, nibble swap, bit reversal or positional XOR. A brute-force deflate/zlib/LZMA sweep over the first 8 MB returned zero hits", "confidence": "verified" },
         { "label": "Container verdict", "value": "Opaque but structured, and not a block cipher. Decoding it is never required in order to write a replacement OS", "confidence": "inferred" },
+        { "label": "Container — solved elsewhere", "value": "OpenWING ships `wingfw_unpack`, `wingfw_repack` and `wingfw_verify`, so the format is solved by someone. What is public is only a loader shim: the implementation and, in their words, \"any secret constants\" live in a separate private repository. So the honest status is not *unsolved* — it is unsolved here, solved and deliberately withheld there", "confidence": "public" },
+        { "label": "Measurement stack portability", "value": "The Stage 1 premise is verified in software: the DSP measurement code compiles for `armv7-unknown-linux-gnueabihf` with no linker, sysroot or system library, and all 133 of its tests pass on a 32-bit target. ARM code generation and VFP behaviour remain open — only qemu or the hardware settles those", "confidence": "verified" },
         { "label": "DSP toolchain", "value": "ADI CrossCore — proprietary, licensed", "confidence": "public" },
         { "label": "FPGA toolchain", "value": "Efinix Efinity — free, but proprietary", "confidence": "public" }
       ],
       "security": [
-        { "label": "Secure boot", "value": "Unknown, and it is the project's kill criterion. If the i.MX 6 HAB fuses are burned closed, the platform is not open and the work stops", "confidence": "unknown" },
-        { "label": "Container", "value": "Obfuscated by a mechanism not yet identified. Analysed, unsolved, and off the critical path", "confidence": "unknown" }
+        { "label": "Secure boot", "value": "Unknown, and it is the project's kill criterion. If the i.MX 6 HAB fuses are burned closed, the platform is not open and the work stops. That an independent project boots its own Linux on a WING is strong practical evidence the answer is favourable, though it has not been confirmed for the Compact specifically", "confidence": "unknown" },
+        { "label": "Container", "value": "Obfuscated by a mechanism not identified here, and off the critical path. Not a block cipher, on the constant-run and index-of-coincidence evidence above", "confidence": "unknown" }
       ],
       "programmable": [
         { "rank": 1, "item": "The i.MX 6 boot ROM, over USB OTG", "note": "Publicly documented in the NXP reference manual, requires no cooperation from the stock software, and is also the recovery path — which is why it is the one route worth proving before anything else is attempted. Conditional on the HAB fuses." },
@@ -420,7 +423,24 @@
       ],
       "traps": [
         "A 3-byte magic such as gzip's appears about 2.3 times by chance in 38 MB, and scanning 514 transforms means scanning 263 MB — expect roughly 16 coincidental hits. An early verdict called the firmware \"a known container\" on exactly that basis.",
-        "Every negative sweep result needs a positive control. A broken sweep and a genuine absence look identical."
+        "Every negative sweep result needs a positive control. A broken sweep and a genuine absence look identical.",
+        "Averaging a statistic over a non-stationary image hides the finding. Reported as one number the container looks like weak, uninteresting obfuscation at 7.37 bits/byte; split at 0x230000 it resolves into an exactly-uniform head and a visibly structured bulk, which is the whole result.",
+        "Assuming that because *we* have not solved something, nobody has. The container was written up as an open problem while a public repository already contained working unpack and repack tools for it — with the substance moved to a private submodule, so the tooling is visible and the method is not. Checking what exists costs minutes and reframes the question from \"can this be solved\" to \"is it worth re-solving\"."
+      ],
+      "openProjects": [
+        {
+          "name": "OpenWING",
+          "url": "https://github.com/OpenMixerProject/OpenWING",
+          "licence": "GPL-3.0",
+          "activity": "Early — work in progress, June 2026",
+          "what": "The same team's port of their X32 work to the WING. Linux boots on the i.MX 6 and the surface is largely alive; the audio hardware is not. It is roughly where this project's Stage 0 and Stage 1 would end up, reached from the opposite direction.",
+          "points": [
+            "Working: Linux boots, screen, touch and network, USB, and buttons, encoders and faders at a basic level. The scribble-strip LCDs are understood.",
+            "Not working, and explicitly listed as such: the Trion FPGA, all four DSPs, and the entire audio system — ADDA, StageConnect, AES/EBU and AES50. So no audio passes through it today.",
+            "It resolves the largest open question on this page in principle: a WING will boot a third-party Linux, which is what the secure-boot kill criterion asks. It does not resolve it for the Compact specifically.",
+            "Its `.wingfw` tooling is the notable part — unpack, repack and verify all exist, but only as shims onto a private repository holding the implementation and constants."
+          ]
+        }
       ]
     },
 
@@ -680,19 +700,284 @@
       "family": "X32",
       "class": "Digital mixing console",
       "introduced": 2012,
-      "status": "candidate",
-      "tags": ["Not started"],
-      "summary": "Referenced in the WING work as the platform with the most prior open-source activity. No analysis of our own has been performed.",
-      "headline": "No work has been done on this platform. Existing third-party open projects on it are treated as a licensing consideration for the WING work, not as a source.",
-      "method": "None.",
-      "artifacts": [],
-      "hardware": [],
-      "software": [],
-      "security": [],
-      "programmable": [],
-      "verdict": "Candidate only.",
-      "openQuestions": ["Everything."],
-      "traps": []
+      "status": "partial",
+      "tags": ["DCP container", "Stream cipher", "i.MX253", "SHARC", "OpenX32"],
+      "summary": "The container is solved to the byte and every payload inside it is encrypted — so the update image is simultaneously the most transparent and the least readable in this index. It is also the only platform here where a third-party project runs its own operating system on the hardware.",
+      "headline": "The update image carries integrity but no authenticity. Its two header digests are plain MD5 and both reproduce exactly — `md5(\" - designed by Thomas Zint - \" ‖ image with bytes 96–112 zeroed)` for the whole image, and `md5(directory)` with a placeholder constant re-planted at offset 112 — yet nothing in the image is signed. That is why a third-party OS boots on a stock console: the bootloader checks that an image is intact, never that Behringer wrote it.",
+      "method": "Static analysis of one public firmware update image, `dcp_corefs_release-4.13-20240415.update` (release 4.13, 2024-04-15), plus the published release notes. No hardware was involved and no console was opened. Findings were then cross-checked against the OpenX32 project's published material, which is written by people who do have the hardware — that cross-check corrected three claims and is recorded in the traps below.",
+      "artifacts": [
+        "`dcp_corefs_release-4.13-20240415.update`, 7,829,504 bytes, as published by the manufacturer",
+        "The seven-page release-note PDF accompanying that version",
+        "`dcp_compiler.pl` and `dcp_decompiler.pl`, published by the OpenX32 project with the original author's permission"
+      ],
+      "hardware": [
+        { "label": "CPU", "value": "NXP i.MX253, ARM926EJ-S. Nothing in the firmware image names it — this comes from the OpenX32 project, which runs Linux on the part", "confidence": "public" },
+        { "label": "DSP", "value": "2 × Analog Devices ADSP-21371 SHARC. DSP1 carries the 40-channel mix path, DSP2 the effects — which is exactly the split the image's `mixdsp_image_48k_2` and `fxdsp_image_48k_2` members imply", "confidence": "public" },
+        { "label": "DSP images", "value": "Two separate images, both tagged `48k`, so per-sample-rate DSP builds. The mixing image (50,776 B) is larger than the effects image (32,256 B), suggesting the effects engine is a framework loading coefficient sets rather than 54 discrete algorithms", "confidence": "inferred" },
+        { "label": "FPGA", "value": "Xilinx Spartan-3A XC3S1400, second-sourced to a Lattice ECP5 during the component shortage. The image ships both bitstreams side by side and the 4.11 release notes say \"Support new ADAT card fpga chipset\"; OpenX32 states the shortage as the reason outright", "confidence": "public" },
+        { "label": "Audio I/O", "value": "112 in / 112 out — 32 XLR in, 16 XLR out, 16 UltraNet, 8 aux, 32 card, 40 DSP", "confidence": "public" },
+        { "label": "Board controllers", "value": "Five named beyond the fader and channel-edit boards: `core_A`, `userctrl_A`, `m32c_A`, `mcu_ui_A`, `rack_A`. The three at ≈33 KB are close enough in size to suggest one firmware base built for three boards", "confidence": "inferred" },
+        { "label": "Fader boards", "value": "Revision letters A, M, O, R and T on the left and right banks, three on the middle bank. Revision A images are ≈34 KB and M/O/R/T ≈36 KB — a 6% step that suggests a different microcontroller part, not just a different PCB", "confidence": "inferred" },
+        { "label": "Product variants", "value": "Eight `.init` files in one image — X32, X32C, X32P, X32RACK, X32CORE, M32, M32C, M32R. Their sizes fall into three groups that pair each Behringer model with its Midas equivalent", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Container", "value": "\"DCP\" — a 128-byte header record followed by 197 member records of 128 bytes each, little-endian, then block-packed payloads. Name (87 bytes + NUL), start block (×512), length in bytes, then 32 bytes of digest. Fully solved; the layout closes to the byte against the file length", "confidence": "verified" },
+        { "label": "Container — digests", "value": "The 32-byte field is **two MD5s, not one 32-byte hash**: `md5(first 512 bytes, zero-padded)` then `md5(whole member)`, both computed over the plaintext before encryption. Confirmed against the published 2012 compiler and verified by reproducing both header instances exactly", "confidence": "verified" },
+        { "label": "Version string", "value": "`4.13-0-g2e3bea4e` at offset 0 — `git describe` output, so releases are built straight from a tag", "confidence": "verified" },
+        { "label": "Members", "value": "197: 32 in `binary/`, 76 channel presets, 54 effect presets, 6 monitor, 4 routing, 4 index files, 11 in `prefs/`, 9 splash bitmaps, and one 2,829,090-byte `styles/ablesque.rsrc.z`", "confidence": "verified" },
+        { "label": "The resource member", "value": "`styles/ablesque.rsrc.z` is 36% of the image and by far the largest object in it — larger than the application, both FPGA bitstreams and both DSP images combined. The X32 boot screen's \"Loading resource file …\" is presumably this. Encrypted like everything else, so the `.z` is unconfirmed as zlib", "confidence": "verified" },
+        { "label": "Payloads", "value": "All 197 encrypted. Entropy 8.000 bits/byte on the 1.49 MB application, χ² = 235.7, and **0 repeated 16-byte blocks out of 487,743** across the whole image. Member lengths are not block-aligned, so this is a stream cipher or a stream mode, not ECB or CBC", "confidence": "verified" },
+        { "label": "Keystream", "value": "No reuse. The 39,176 bytes of inter-member padding are almost certainly plaintext zeros and are encrypted too, giving raw keystream at known offsets — and all of those regions are distinct, with no period detectable up to 64 KiB", "confidence": "verified" },
+        { "label": "Key derivation", "value": "The published compiler derives a per-member key as `md5(version string ‖ member name ‖ \" - designed by Thomas Zint - \")`, unpacked to four 32-bit words, alongside the member's start block. Every one of those inputs is plaintext in the shipped image. The encryption step itself is absent from the published source, and eight natural constructions over that key material score at chance against the padding", "confidence": "inferred" },
+        { "label": "The application", "value": "`dcpapp.bin`, 1,491,840 bytes. There is no kernel, filesystem or library member anywhere in the image, so the stock software is most likely bare-metal or an RTOS rather than a Linux userland — a real architectural difference from the HD96 and DM7, which both ship a rootfs measured in tens of megabytes", "confidence": "inferred" },
+        { "label": "Third-party OS", "value": "OpenX32 replaces all of it with Linux 6.18 LTS, BusyBox and an LVGL interface, booting from USB via the stock DCP bootloader", "confidence": "public" }
+      ],
+      "security": [
+        { "label": "Image integrity", "value": "Two MD5 digests in the header — one over the directory, one over the whole image with a fixed seed string prepended. Both verified. MD5 and a published constant, so this is a corruption check, not a security boundary", "confidence": "verified" },
+        { "label": "Image authenticity", "value": "**None found.** No signature, no certificate, no asymmetric key anywhere in the container. That an unrelated project's self-built images boot on unmodified consoles is the practical demonstration", "confidence": "inferred" },
+        { "label": "Payload confidentiality", "value": "A competently applied stream cipher, unbroken here. No reused keystream, no ECB structure, no short period, and no plaintext anywhere except the directory", "confidence": "verified" },
+        { "label": "Where the key is", "value": "Not, as this analysis first concluded, only on the console. The published compiler shows the key deriving from fields that ship in the clear in every image. What is missing is the construction that turns that key into a keystream", "confidence": "inferred" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The DCP bootloader, via a self-built container", "note": "The format is fully documented above and the payloads inside a self-built image need no encryption, because the bootloader does not require any. A `.run` extension executes from RAM and reverts on power-cycle; `.update` writes to the internal SD card. This is the route OpenX32 takes and it needs no exploit — only the format." },
+        { "rank": 2, "item": "The two SHARCs and the FPGA, over internal SPI", "note": "Both DSPs and the FPGA are configured by the main CPU over SPI at boot, so whatever controls the CPU controls them. The toolchains are the obstacle rather than the access: CrossCore for the SHARCs and Xilinx ISE 14.7 or Lattice Diamond for the fabric." },
+        { "rank": 3, "item": "The encrypted payloads", "note": "Not currently reachable. The container around them is solved, the key derivation inputs are known, and there are two independent offline oracles for testing a candidate — but the cipher construction is not published and was not recovered here." }
+      ],
+      "verdict": "A firm negative on payload content and a complete positive on everything around it. The container is solved to the byte, the manifest is a board-level map of a decade-old product line, and the update path turns out to authenticate nothing — which is the finding that matters, because it is why this platform has the most third-party open-source activity of anything in this index. The cipher stands.",
+      "openQuestions": [
+        "What construction turns the derived key into a keystream? The inputs are known and the padding gives a known-plaintext oracle at 39,176 known offsets, so a candidate can be confirmed or rejected entirely offline, with no console involved.",
+        "Does `styles/ablesque.rsrc.z` decompress to a resource bundle once decrypted, and does it carry the parameter model? At 36% of the image it is the largest single object and nothing is known about its contents.",
+        "Do the two per-member MD5s let a decryption be confirmed member by member? They are over plaintext, so yes in principle — the first covers only the leading 512 bytes, which makes partial verification cheap.",
+        "What changed between 4.12 and 4.13? Diffing two releases would show which members moved and the release notes say what changed functionally, mapping members to features without decrypting anything. It costs one more download and remains the highest-value next action."
+      ],
+      "traps": [
+        "**Counting the header as one of the members.** The header's count field reads 197, and it is tempting to read that as one header record plus 196 members. It is not: the header occupies its own 128 bytes and 197 members follow. Getting this wrong drops the last member — which here is the largest object in the image — and the bytes it occupied then look like an unexplained 2.8 MB tail past the end of the table. That produced a confident, wholly fictitious finding, complete with three hypotheses about what the mystery region might be. The correct accounting closes to the byte with nothing left over, and that exact closure is the check that would have caught it immediately.",
+        "**Assuming a 32-byte digest field is a 32-byte digest.** Every SHA-256 and SHA-512 candidate was tested against it and all were rejected, which correctly suggested the digests were over plaintext — but for the wrong reason. The field is two 16-byte MD5s, and the first covers only the leading 512 bytes. A test that had split the field in half would have identified the algorithm on the spot.",
+        "**Recomputing a self-referential digest without reconstructing the state it was computed in.** The header's directory digest is `md5(directory)` taken while offset 96 was still zeros and offset 112 held `md5(\"DCP bootloader\")` as a placeholder. Hash it as it sits in the shipped file and it mismatches — which reads exactly like \"this is not a digest of the table\", the wrong conclusion. Both header digests reproduce once the write order is modelled.",
+        "**Reading entropy ≈ 8.0 as proof of encryption.** The largest member is named `.z` and compressed data measures the same as encrypted data on every statistic used here. What actually settles it is the MD5 oracle: the stored digests are over plaintext, so if a member were merely compressed its digests would reproduce from the bytes as they sit. For all 197, they do not.",
+        "**Treating a third-party project as competition rather than as instrumentation.** Three claims here — the DSP split, the second-source FPGA and the digest format — were confirmed or corrected against OpenX32's published material in minutes. A project with the hardware on the bench is the cheapest verification available to an analysis that has only a file."
+      ],
+      "openProjects": [
+        {
+          "name": "OpenX32",
+          "url": "https://github.com/OpenMixerProject/OpenX32",
+          "licence": "GPL-3.0",
+          "activity": "Active — beta, July 2026",
+          "what": "A complete replacement operating system for the X32 and M32: Linux 6.18 LTS and BusyBox on the i.MX253, an LVGL interface at 30 fps, and the console's own audio path under its own control. It self-assesses at roughly 55–65% of the stock firmware's features and boots from a USB stick without recompiling anything.",
+          "points": [
+            "Drives both FPGA variants (Spartan-3A and ECP5) and both SHARCs over internal SPI, with 1:1 routing across all 112 inputs and outputs, and gate, 4-band EQ and compressor per channel running in the main DSP.",
+            "AES50 works on the Lattice builds, including using the aux channel for headamp control — the AES50 core is a separate VHDL project in the same organisation.",
+            "It publishes `dcp_compiler.pl`, the original 2012 Behringer tool, with the author's permission. That is the single most useful artifact on this platform: it documents the container format from the vendor's side and names the key-derivation inputs.",
+            "It does not decrypt vendor payloads and does not need to — its own images are built plaintext, which is what demonstrates that the bootloader never checks authenticity."
+          ]
+        },
+        {
+          "name": "OpenMixerControl",
+          "url": "https://github.com/OpenMixerProject/OpenMixerControl",
+          "licence": "GPL-3.0",
+          "activity": "Active — July 2026",
+          "what": "The control application shared by OpenX32 and OpenWING, abstracting three different consoles behind one codebase and also building for a PC via SDL2.",
+          "points": [
+            "This is the part that makes the family interesting structurally: the surface, the metering and the mix model are portable, and only the hardware layer is per-console.",
+            "It is where the X32 work and the WING work actually converge — the same application is the target on both platforms."
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "analog-way-midra",
+      "manufacturer": "Analog Way",
+      "model": "Midra series",
+      "family": "Midra",
+      "class": "Video presentation switcher",
+      "introduced": 2013,
+      "status": "documented",
+      "tags": ["LPC43xx", "3 × FPGA", "ADV7842", "HDBaseT", "One image, six models"],
+      "summary": "Six models, one firmware, one set of bitstreams. The layer engine lives in FPGA fabric that is configured identically on every unit in the range, so the tier a machine sells as is decided by an integer it reads at boot.",
+      "headline": "The updater flashes one `CAMELYA.hex`, one `FELINDRA.hex`, one `TATIANA.hex` and one MCU application to **every** model in the family, with no per-model branching anywhere in the script. The compositor is in those bitstreams — so a Pulse2 is running the identical silicon configuration to an Eikos2.",
+      "method": "Static analysis of one vendor updater package, plus the vendor's own control client for the protocol enumeration space. No hardware was inspected. The package happens to contain a manufacturer update log from a real PLS350, which is the only observation here of a live unit — and it is their log, not ours.",
+      "artifacts": [
+        "`midra_updater_v02_02_02.exe` — Inno Setup 5.5 installer containing `Device.xml`, `Script.xml`, six module scripts and every firmware component as plaintext Intel HEX",
+        "`Logs.txt`, shipped inside that package — a 2013 update session against a PLS350, naming the components a physical unit answered for",
+        "`MDR_launcher.swf` — the RCS2 control client; its AVM2 constant pool carries the complete `DEV_*`, `CARD_*`, `LAYER_*` and plug enumerations"
+      ],
+      "hardware": [
+        { "label": "Host MCU", "value": "One micro, codenamed **CALIMERO**. Dual-bank flash at `0x1A000000` and `0x1B000000` with the application 32 kB into bank A, 512 kB per bank, and an SRAM stub executed at `0x20000000` — that is the NXP LPC18xx / LPC43xx memory map. `Product.xml` corroborates with an `NXPBootStartTimeout` parameter. The exact part was not identified", "confidence": "inferred" },
+        { "label": "Flash layout", "value": "Application code `0x1A008000`–`0x1A07D7CF` (481,232 B); const data `0x1B000000`–`0x1B02EB0B` (191,244 B); factory-test data `0x1B030000`; factory-test code `0x1B040000`. Every string, chip name and lookup table lives in the const image, not the code image", "confidence": "verified" },
+        { "label": "FPGAs", "value": "Three, codenamed **CAMELYA**, **FELINDRA** and **TATIANA**, each addressed as its own daughter card (`CARD_CF_CAMELYA`, `CARD_CF_FELINDRA`, `CARD_CF_TATIANA`). One bitstream file each", "confidence": "verified" },
+        { "label": "Bitstream container", "value": "Intel HEX wrapping a 43-byte proprietary header at `0x20` and a payload from `0x33F`. Payloads are 3,222,997 / 3,348,122 / 3,279,834 bytes at 6.50 / 6.61 / 6.58 bits per byte — uncompressed structured data, i.e. raw configuration bitstreams", "confidence": "verified" },
+        { "label": "FPGA vendor", "value": "Not identified. No Xilinx sync word, `.bit` header or Altera/Lattice preamble survives any bit rotation, byte reversal or inversion of the payload. Three different lengths for uncompressed bitstreams implies three different parts rather than one part carrying three designs", "confidence": "unknown" },
+        { "label": "Input silicon", "value": "FE1–FE4 **Analog Devices ADV7842** — HDMI receiver, analog AFE, colour processor, SD decoder, InfoFrame and HDCP repeater, each a separate I²C sub-address. FE5–FE6 **ADV7611**, HDMI only. Read from the firmware's own I²C device-name table", "confidence": "verified" },
+        { "label": "Output silicon", "value": "BE1 and BE2 each carry a **Silicon Image SiI9024** HDMI transmitter, a **TI THS8200** video DAC and a **Silicon Labs Si570** programmable pixel clock. BE3 is an **ADV7301** or **ADV7341** for the monitoring output", "confidence": "verified" },
+        { "label": "Audio", "value": "**Cirrus Logic CS8422** × 2 (asynchronous sample-rate converter / AES receiver) and **CS4265** × 2 (codec)", "confidence": "verified" },
+        { "label": "EDID", "value": "One EEPROM per **connector**, not per input — 18 individually addressable positions spanning `EDID_ANA1..4`, `EDID_DVI1..4`, `EDID_HDMI1..6` and `EDID_HDBT1..4`. The 2013 PLS350 log shows a real unit answering for twelve of them", "confidence": "verified" },
+        { "label": "Daughter cards", "value": "`CARD_MOTHERBOARD`, the three FPGA cards, `CARD_CF_AUDIO`, `CARD_CF_FAV`, `CARD_CF_VIDEO_OUT`, `CARD_CF_SDI_IN_1`, `CARD_CF_SDI_IN_2`, `CARD_XPORT`. SDI input is two optional cards — \"CF\" is *carte fille*", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "No FreeRTOS, ThreadX, µC/OS, embOS or Linux string appears in either image, and the client's microcontroller enum has exactly one entry (`MIC_CALIMERO`). A single bare-metal micro drives the whole machine", "confidence": "verified" },
+        { "label": "Model table", "value": "A flat 16-entry, 12-byte-stride string table at `0x1B02808C`: `MDRdbg`, six base models, `MNMdbg`, six `-H` models and two `-H LE` models. Device type is `256 + i` across the first block and `280 + j` across the second", "confidence": "verified" },
+        { "label": "Models the updater accepts", "value": "Twelve, in `Device.xml`: 257 EKS550 (Eikos2), 258 SPX450 (Saphyr), 259 PLS350 (Pulse2), 260 SMX250 (SmartMatriX2), 261 QMX150 (QuickMatriX), 262 QVU150 (QuickVu), then 282–285 and 287–288 for the `-H` and `-H LE` variants", "confidence": "verified" },
+        { "label": "Models the firmware knows", "value": "Sixteen. **`281 EKS550-H` and `286 QVU150-H` exist in the firmware model table and in the control client's `DEV_*` list, but are absent from the updater's compatibility list** — built into the code and, apparently, never shipped", "confidence": "verified" },
+        { "label": "Two platforms, one package", "value": "The updater carries **two** complete MCU applications — `Calimero_*` (\"MDR\") and `Chtiderman_*` (\"MNM\") — and flashes both unconditionally. Only the `Chtiderman` model table contains the two `LE` SKUs", "confidence": "verified" },
+        { "label": "Layer model", "value": "Per screen: `LAYER_FRAME` background, `LAYER_PIP_1..4`, `LAYER_LOGO_1..2` and `LAYER_AUDIO`. Two screens (`SCREEN_S1`, `SCREEN_S2`), two outputs, main and preview. Keying is luma or chroma, each with a downstream variant", "confidence": "verified" },
+        { "label": "Protocol space", "value": "The superset, not any one model: 10 inputs across 5 plug types (`ANALOG_HD15`, `DVI`, `SDI`, `HDMI`, `HDBASET`), 2 outputs across 8 plug types, 8 still frames and 8 logos, 8 preset memory slots, 3 case fans", "confidence": "verified" },
+        { "label": "Control interfaces", "value": "RS-232 at 115200 8N1, USB CDC, and TCP 10500. `Product.xml` gives all three, with a factory default of `192.168.2.140`", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Image signing", "value": "None. No RSA, SHA, AES, HMAC or ECDSA string appears in either image, and every firmware component ships as plaintext Intel HEX — no container, no compression, no obfuscation", "confidence": "verified" },
+        { "label": "Update validation", "value": "A version check, a transfer and a read-back verify per component (`Kd`, `Th`, `Kf` in the script grammar). There is no signature step in the grammar at all", "confidence": "verified" },
+        { "label": "Bootloader", "value": "Two-stage. A resident bootloader at node address 1 exposes only `MICRO_RAM`; the updater pushes a 40,900-byte stub into AHB SRAM, jumps to it with the script's `Ga 0x20000000` opcode, and that stub performs every flash operation", "confidence": "verified" },
+        { "label": "Entitlement", "value": "None found. No licence, unlock, activation, option-key or dongle string in either MCU image or in the control client. This generation has no feature-key system — unlike the LiveCore generation that followed it, which has one", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The control protocol", "note": "ASCII over TCP 10500 or RS-232, with the full variable table recoverable from the vendor's own client. The client is an Adobe AIR application and the platform is long out of support, so a modern replacement controller is the obvious and entirely legitimate project — and needs nothing from the firmware." },
+        { "rank": 2, "item": "EDID management", "note": "One EEPROM per connector, individually addressable through the documented update path, with the stock EDIDs shipped as readable 256-byte HEX. This is the one part of the machine's behaviour a third party can change through a supported mechanism." },
+        { "rank": 3, "item": "The FPGA fabric — in principle only", "note": "The compositor is entirely in the three bitstreams, so nothing about the video path can be changed without them. They are unencrypted, but the container is proprietary and the parts are unidentified, which puts any real work here behind two unsolved problems and a bench." }
+      ],
+      "verdict": "Within a platform the model tier is enforced in software, from a device-type integer read at boot; between the base and `-H` boards it is genuinely different hardware. The evidence for the first half is the update script, which has no per-model branching and ships exactly one bitstream per FPGA for the whole family, plus a single MCU application that carries the complete FE1–FE6 chip map and the complete sixteen-model table. The evidence for the second half is in the same package: the `Chtiderman` build replaces the analog RGBHV output with Valens VS2000 HDBaseT transmitters and receivers, which is a different board, not a different setting. What is really built differently between the base models is the connector and daughter-card population — the two optional SDI cards, and which of the six front ends and their EDID EEPROMs are fitted. A Pulse2 does not have fewer layers because it has less silicon.",
+      "openQuestions": [
+        "Which FPGAs these actually are. The bitstreams are raw and unencrypted but sit in an Analog Way container with no vendor magic, and the three differing lengths point at three different parts. A board photograph or a JTAG IDCODE settles it in seconds and nothing in the files will.",
+        "External frame memory. One bitstream can address different DDR depths, so it remains possible that the higher tiers are stuffed with more frame RAM and the firmware limit merely tracks what is fitted. This is the single caveat on the software-tiering conclusion and it cannot be closed from files.",
+        "Where the device-type integer is stored. The update log shows the unit reporting `Detected Device Type [259]` alongside a device ID, but the storage location was not located and was not looked for.",
+        "What the 43-byte bitstream header encodes. It is identical for the first eight bytes across all three FPGAs and diverges after, with the last two bytes differing — consistent with an identifier plus a checksum, but not decoded."
+      ],
+      "traps": [
+        "The first 80 bytes of every bitstream payload contain only `0x00` and `0x80`, which is exactly what a bitstream expanded to one configuration bit per byte for GPIO bit-banging looks like. Decoding on that assumption produced `0f f0 0f f0` — very close to the Xilinx `.bit` magic — and a confident wrong answer. The byte histogram of the whole payload killed it: `0x44`, `0x22`, `0x81` and `0x88` are all common further in. A structured header region can imitate an encoding for as long as you only look at the header.",
+        "`Midra_Simulator.app` is **not** the Midra series. Its EDIDs are `MDR4K_*` and `ALTA4K_*` — it belongs to the later, unrelated Midra 4K / Alta 4K line, and it is an HTML5 application where this generation's client is Flash. Analysing it answers a different question entirely.",
+        "Reading \"one firmware package\" as \"one machine\". The single-image evidence proves the software is common across the family; the very same package also carries two entirely different MCU applications for two different I/O boards. Stopping at the first conclusion would have missed the `-H` platform completely.",
+        "The vendor's own update log inside the package is the most valuable file in it and looks like debris. It is the only record here of a physical unit's responses — which device type it reported, and which of the eighteen EDID positions actually existed."
+      ]
+    },
+
+    {
+      "id": "analog-way-livecore",
+      "manufacturer": "Analog Way",
+      "model": "LiveCore",
+      "family": "LiveCore (Ascender / NeXtage / SmartMatriX Ultra)",
+      "class": "Video presentation switcher",
+      "introduced": 2014,
+      "status": "partial",
+      "tags": ["Card-based", "x86 PC card", "14 micros", "AES-encrypted updater", "Downgrade register"],
+      "summary": "A card frame with an x86 PC inside it and a microcontroller on every card. Layer count is not a setting — it is how many processing cards are in the chassis.",
+      "headline": "`layersPerResource` tracks the processing-card count exactly: Ascender 16, 32 and 48 are 2, 4 and 6 PROC cards. The model number is arithmetic — **`ASC4806` means 48 total layers, 6 per screen**, from `6 × 4 screens × 2 (program + preview)`.",
+      "method": "The vendor update packages are AES-encrypted and were not decrypted. The findings come instead from the vendor's own simulator appliance, whose second disk is an ext4 image of the device filesystem — read without mounting — carrying the platform's variable, enum and dimension model as JSON plus its Lua policy layer. No hardware was inspected.",
+      "artifacts": [
+        "`LivecoreUpdate_04_02_77.awp` and `LivecoreUpdateBIOS_01_02_06.awp` — encrypted; statistics only",
+        "`aw_simulator.ova` — the vendor simulator appliance; disk 2 is an ext4 filesystem containing the device application, the WebRCS tree and `resources/Platforms/LiveCore_4_02/`",
+        "`GENERIC_DIM.json`, `GENERIC_ENUM.json`, `GENERIC_VAR.json` — the platform's own dimension table, 133 enumerations and 1,014 control variables",
+        "`Lua/typedef/awLiveCore.lua` — the per-model capability table, in the vendor's own source with French comments intact"
+      ],
+      "hardware": [
+        { "label": "Chassis model", "value": "Card frame with 20 addressable slots: `LOGO_BRIDGE`, `IN_1..IN_3`, `PROC_1..PROC_6`, `OUT_1..OUT_2`, `MONITORING`, `FDP`, three `FAV_*` front-panel cards, `FRAMELOCK`, `LINK_UP` and `LINK_DOWN`", "confidence": "verified" },
+        { "label": "Distributed control", "value": "Fourteen microcontrollers, one per card — `BRIDGE`, `BRIDGE_AUX`, `IN_1..3`, `PROC_1..6`, `OUT_1..2`, `MONITORING`. Part numbers are not given anywhere in the files", "confidence": "verified" },
+        { "label": "Host", "value": "There is an **x86 PC inside the frame**. The variable table carries `PC_CARD_REV`, `PC_CARD_STATUS`, `PC_TEMP_CPU`, `PC_MAC_ADDRESS`, `VER_BIOS`, `VER_PC` and `VER_DOM` — the last an enumeration of disk-on-module part numbers. It runs Apache and PHP and serves the Flash WebRCS applet", "confidence": "verified" },
+        { "label": "Separate BIOS update", "value": "That PC card is why `LivecoreUpdateBIOS_01_02_06.awp` exists as its own package, applied from a USB stick and confirmed with an on-screen \"DO YOU WANT TO UPDATE LIVECORE BIOS?\" prompt", "confidence": "verified" },
+        { "label": "Card population rules", "value": "Input cards = inputs ÷ 4 (`INPUTS_BY_INPUT_CARD = 4`), output cards = outputs ÷ 2, processing cards = the model's layer capacity. `LOGO_BRIDGE`, `MONITORING` and `FDP` are always present", "confidence": "verified" },
+        { "label": "Card part references", "value": "The simulator carries plausible `CARD_REF` values per slot: bridge `210218`, input cards `210244`, processing cards `210212`, output cards `210213`, framelock `210234`. Whether these are real Analog Way references or simulator fixtures is not established", "confidence": "unknown" },
+        { "label": "Input plugs", "value": "Position-dependent within a card, and different on the 4K variant. Standard: position 1 HD15/DVI-A/DVI/HDMI/SDI, 2 DVI/SDI, 3 HD15/DVI-A/DVI/SDI/HDMI, 4 SDI/DisplayPort. On the 4K card position 1 **loses** HDMI and position 2 **gains** it", "confidence": "verified" },
+        { "label": "Output plugs", "value": "`ANALOG`, `DVI`, `SDI`, `OPTICAL` — two per output card, plus two optical links and a monitoring output", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Device application", "value": "A 2.9 MB Qt5 binary on a Linux filesystem, with Lua 5.3 as the policy layer — around forty scripts covering layer validity, output format management, memory load and save, and factory reset", "confidence": "verified" },
+        { "label": "Capability table", "value": "`GetParametersByDevValue()` returns, per model: is-LOE, soft-edge, SPU control, perspective layer, 4K-ready, layers per resource, is-3U, resources per device, outputs, inputs, monitoring resources, processing cards", "confidence": "verified" },
+        { "label": "Model capabilities", "value": "NeXtage 08 — 8 in, 2 out, 2 resources, 2 layers, 1 PROC, 3U. NeXtage 16 — 8/2/2/4/2, 3U. SmartMatriX Ultra — 12/4/2/2/2, **no soft-edge**. Ascender 16 — 12/4/4/2/2. Ascender 32 — 12/4/4/4/4. Ascender 48 — 12/4/4/6/6", "confidence": "verified" },
+        { "label": "Detected models", "value": "24 device IDs: `ORX_1` NeXtage 16 (97), `ORX_2` SmartMatriX Ultra (98), `ORX_3` Ascender 32 (99), `ORX_4` Ascender 48 (100), **`ORX_5` (101) which was never released**, `LOE_16/32/48` Output Expanders (102–104), the `_4K` variants (105–111), `ASC016` Ascender 16 (112–113), the `_PL` Perspective Layer builds (114–115, 118–119) and `NXT0802` NeXtage 08 (116–117)", "confidence": "verified" },
+        { "label": "Sibling platform", "value": "The same appliance carries a second platform, `VTX`, with one device — the **VIO 4K** at dev 1024, whose only option slot is an XLR audio card. Different software generation, same control architecture", "confidence": "verified" },
+        { "label": "Coupling", "value": "`SINGLE`, `MASTER`, `SLAVE_1..SLAVE_7`; modes `LINK_MASTER`, `LINK_SLAVE`, `SYNC_MASTER`, `SYNC_SLAVE`. Linking two frames doubles the model's input and output counts outright. Three link cables and two optical links", "confidence": "verified" },
+        { "label": "Protocol space", "value": "24 inputs, 8 outputs, 8 screens, 24 layers, 16 groups, 32 EDID library slots, 144 preset memories, 512 settings memories, 100 stills, 10 GPO and 2 GPI — the ceiling across the whole family, not any one model", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Update package", "value": "AES-encrypted. Entropy 7.9998 bits/byte from byte zero, length an exact multiple of 16, and **zero repeated 16-byte blocks in 64 MB** — so a chaining or counter mode, not ECB. No header, no magic, no version field in the clear", "confidence": "verified" },
+        { "label": "Decryption", "value": "Not attempted beyond statistics. The key lives on the device side and the simulator appliance does not appear to carry a production copy", "confidence": "unknown" },
+        { "label": "Version binding", "value": "`PlatformDescriptor.json` carries `\"updater\": \"67239956\"` — which is `0x04020014`, i.e. version 04.02.20 packed as bytes. The package version is a plain integer comparison", "confidence": "verified" },
+        { "label": "Model register", "value": "The reported model is a control variable, not a constant. `xDOWNGRADE_DEV` (`DGdev`) is externally writable, with the true model preserved read-only in `xDOWNGRADE_ORIG_DEV` (`DGori`) and the permitted set supplied by the device in `xDOWNGRADE_DEV_LIST_COMPATIBILITY`. It is a **downgrade** path, and it exists for link compatibility — pair two unequal frames and the larger steps down, which is why there is an explicit `COUPLING_DISABLE_AUTODOWNGRADE` flag. Recorded as a structural fact about the coupling feature; it was not exercised and the permitted set was not enumerated", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The control protocol", "note": "1,014 variables with their command mnemonics, access rights, types and ranges are all in the platform's own JSON on the appliance. The stock client is a Flash applet served by the device, which is dead technology; a modern replacement controller is the obvious project and needs nothing that is encrypted." },
+        { "rank": 2, "item": "The Lua policy layer", "note": "Layer validity, output format management and the memory model are Lua on the device filesystem, not compiled code. That is an unusually open seam for a machine of this class — though reaching it on real hardware, rather than in the simulator, was not investigated." },
+        { "rank": 3, "item": "Nothing in the video path", "note": "The processing is on cards behind a backplane, driven by per-card micros, and every firmware component arrives inside the encrypted package. There is no analysable route to the picture from here." }
+      ],
+      "verdict": "Hardware, and not subtly. Layer count is the processing-card count, input count is the input-card count, output count is the output-card count, and the 4K variants use a physically different input card — the per-position plug list changes, which a licence cannot do. The software knows how to be every model in the family from a single encrypted package, and the reported model is even writable over the wire, but only downwards and only within a set the device itself supplies. The interesting structural fact is how little of the machine is in the update file: an x86 PC card with its own BIOS and disk-on-module runs the web interface and the Lua policy layer, and fourteen microcontrollers on the cards do the rest.",
+      "openQuestions": [
+        "What is actually on a processing card. The card model, the micro and the per-card FPGA or ASIC are all invisible from the appliance — it describes the machine's behaviour, not its silicon. This is the largest gap on the page.",
+        "`ORX_5`, device 101 — six layers per resource but only two resources, sitting between the Ascender and NeXtage shapes. It is in the enumeration and in the capability table and appears in no catalogue.",
+        "Whether the simulator's `CARD_REF` numbers are real Analog Way part references or fixtures invented for the appliance.",
+        "The `.awp` key. It is on the device side; the appliance is a simulator build and does not obviously carry a production copy. Not pursued.",
+        "How much of the appliance's Lua matches what runs on real hardware. The scripts are explicitly simulation-side (`simulator_SetVarMatrixValue`), so they describe the model faithfully but may not be the production implementation."
+      ],
+      "traps": [
+        "Reading the model number as inputs and outputs. `ASC4806` looks like 48 inputs and 6 outputs; the machine has **12 inputs and 4 outputs**, and the digits are 48 total layers and 6 layers per screen. `SMX12x4` genuinely is 12 in by 4 out, which makes the wrong reading feel confirmed. Only the capability table settles it.",
+        "Treating the encrypted update package as the end of the road. All three Analog Way packages examined here are AES-encrypted, which reads as a dead end — while the vendor's own simulator, already installed, ships the complete device filesystem unencrypted, including the platform's entire variable model. The locked door had an open one beside it.",
+        "Assuming `-4K` is a licence because it is presented in the interface as an option slot. It changes which physical connectors are usable on which input position, so it is a different card. An \"option\" in the vendor's configuration UI is not evidence of a software-only difference.",
+        "Averaging the encrypted package's statistics and stopping at \"high entropy\". The useful facts were the length being an exact multiple of 16 and the complete absence of repeated 16-byte blocks — which together say *block cipher, chained or counter mode*, a much more specific claim than \"encrypted\"."
+      ]
+    },
+
+    {
+      "id": "analog-way-livepremier",
+      "manufacturer": "Analog Way",
+      "model": "LivePremier / Aquilon",
+      "family": "LivePremier (Aquilon RS / C)",
+      "class": "Video presentation switcher",
+      "introduced": 2018,
+      "status": "partial",
+      "tags": ["Arria 10 GX", "COM Express Xeon-D", "ATSAM per card", "ST2110 / NDI / SDVoE", "Custom chassis"],
+      "summary": "A COM Express Xeon-D module driving a card frame of Intel Arria 10 GX FPGAs, one microcontroller per card. The RS models are fixed card lists; the C models are the same chassis sold configurable.",
+      "headline": "The firmware's own generated enumeration comments do the classification for you: `NLC_RS4` is \"**NLC RS4 chassis 5U**\" and `NLC_CPLUS` is \"**NLC Custom chassis 5U**\". Same frame, same software, different cards.",
+      "method": "The vendor update package is AES-encrypted and was not decrypted. The findings come from the vendor's simulator, which bundles eleven complete device software trees; the web interface each one serves is a webpack build that was shipped **unminified with its source comments intact**, including a generated file documenting 387 internal enumerations. No hardware was inspected.",
+      "artifacts": [
+        "`AQL_Updater_6_2_73.awp`, 751 MB — encrypted; statistics only",
+        "`AW LivePremier Simulator.app` — eleven firmware trees from 3.0.255 to 6.1.59, each carrying the device application and the web bundle the device itself serves",
+        "`dist/client/app.*.js` — the unminified web bundle; `variables-webapp.enum.json` revision 69.0.0-dev.0, generated from `C:\\Projets\\NLC\\wa-nlc-data-objects\\resources`",
+        "`AW_APP_SIMULATOR` — the 21 MB Qt/Node device binary, for the enum value strings the web bundle does not carry"
+      ],
+      "hardware": [
+        { "label": "Host", "value": "A **COM Express module**. `ENUM_DEVICE_CXP_MODULE` is `CONGATEC / ADLINK / ADVANTECH_5992 / ADVANTECH_5993 / KONTRON`, and `ENUM_CXP_CPU` is `INTEL_XEON_15XX` (Broadwell) or `INTEL_XEON_17XX` (Ice Lake). Two disks, primary for system and secondary for data", "confidence": "verified" },
+        { "label": "FPGAs", "value": "**Intel Arria 10 GX**, named in the design enumeration as `A10GX` with a `_66` suffix for the larger die — the 10AX066 / GX 660K part. One design per card function", "confidence": "verified" },
+        { "label": "FPGA design catalogue", "value": "44 designs, named after *Game of Thrones* houses by role. Input designs are Lannisters (`JAIME` HDMI, `TYRION` DP, `CERSEI` SDI, `TYWIN` optic, `JEOFFREY` Aptovision, `TOMMEN` HDMI×8, `JOANNA` ST2110); output designs are Starks (`EDDARD` HDMI, `BENJEN` DP, `CATELYN` SDI, `RICKARD` IP-SDI, `BRANDON` DP×8, `ARYA` Share, `LYSA` ST2110); processing is Wildling (`TORMUND` 2D, `MANCE` **3D**); monitoring is Baratheon; backplane is Martell", "confidence": "verified" },
+        { "label": "Card slots", "value": "`MOC` multiviewer, `IN_1..IN_4` at 8 inputs each, `PROC_1..PROC_4`, `OUT_1..OUT_6`, `FRAME_1..FRAME_2` image store, `FDP` backplane, `FAV` front panel, `AUDIO`, `SUPPLY`", "confidence": "verified" },
+        { "label": "Distributed control", "value": "An **ATSAM** microcontroller on every card, with the generator's comments giving the exact mapping — `IN_n` covers inputs 1–8, 9–16, 17–24, 25–32; `PROC_n_A` and `PROC_n_B` cover four scalers each; `OUT_n` covers four outputs each", "confidence": "verified" },
+        { "label": "Chassis", "value": "3U, 4U, 5U or 6U. The backplane FPGA design differs between them — `OBERYN` and `DORAN` for 4U/5U, `OBARA` and `DOREA` for 6U — so the frames are not merely taller", "confidence": "verified" },
+        { "label": "Card mezzanines", "value": "Front-end and back-end cards carry a mezzanine: `FE_MZ_DP` (\"8xDP IN TOP\"), `FE_MZ_HDMI`, `FE_MZ_SDI`, `FE_MZ_TEST`. Card types themselves span DP, HDMI, SDI, SFP, optical HDMI, EXT CXP, EXT QSFP, SDVoE, capture, IP-SDI and ST2110", "confidence": "verified" },
+        { "label": "SDVoE", "value": "The SDVoE card designs are named \"Aptovision\" — `JEOFFREY` in and `ROBB` out — which is the BlueRiver silicon", "confidence": "verified" },
+        { "label": "Power", "value": "Up to three PSUs, `BEL` or `ARTESYN`", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Platform name", "value": "Internally **NLC** — \"New LiveCore\". The web application's own manifest calls itself `nlc-platform`; the marketing name is Aquilon and the enum prefix in the user interface is `AQL`", "confidence": "verified" },
+        { "label": "Detected models", "value": "`NLC_CMINI` (AQL Cmini, 3U custom), `NLC_RS1` and `NLC_RS2` (4U), `NLC_C` (4U custom), `NLC_RSALPHA` (4U), `NLC_RS3` and `NLC_RS4` (5U), `NLC_CPLUS` (5U custom), `NLC_RS5` and `NLC_RS6` (6U), `NLC_CMAX` (6U custom), plus a debug entry", "confidence": "verified" },
+        { "label": "Undocumented variants", "value": "**`VDW_W`, `VDW_WPLUS` and `VDW_WMAX`** — custom 4U, 5U and 6U chassis with no product page and no chassis artwork, for which the client falls back to the RS4 image. A separate `ENUM_PROCESSING_MODE` offers `USE_DEV / FORCE_NLC / **FORCE_VDW**`, so there is a second processing personality in the same firmware", "confidence": "verified" },
+        { "label": "Signal flow ceiling (6.1)", "value": "64 logical inputs, 64 scalers (`PROC_n_SCALER_mA` / `mB`), 64 mixer pipes as main and preview pairs, 24 screens, 96 auxiliaries, 128 layers per screen, 24 outputs, 2 multiviewer outputs, 32 share streams", "confidence": "verified" },
+        { "label": "Crosspoint is lane-based", "value": "`ENUM_CROSS_PROC_IN` addresses each physical input as **1 to 8 lanes** (`LIVE_INPUT_n_TX_0..7`) according to its bandwidth, padded with entries the generator labels \"Dummy input for modulo 32\". A 4K source occupies several lanes of the same fabric an HD source uses one of", "confidence": "verified" },
+        { "label": "Processing features", "value": "Keyer with luma and chroma plus LUT, masks, borders, LUT3D conversion and correction banks, HDR with PQ and HLG and a BBC OETF conversion path, selectable 0–3 frame buffer, output rotation, soft-edge with ten control points, 3D stereo frame mapping", "confidence": "verified" },
+        { "label": "Transport", "value": "ST2110 with PTP and an NMOS registry, NDI with its own codec and error enumerations, SDVoE, Dante on the audio card, a QSFP \"Share\" ring for multi-frame source sharing, genlock, GPI/GPO and tally with protocol, colour and trigger models", "confidence": "verified" },
+        { "label": "Web interface", "value": "React, served by a Node server on the device. The eleven bundled trees span 3.0.255 (2022) to 6.1.59 (2026), which makes the platform's own evolution readable side by side", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Update package", "value": "AES-encrypted, same construction as the LiveCore packages — 7.9998 bits/byte from byte zero, length an exact multiple of 16, no repeated 16-byte blocks in 64 MB", "confidence": "verified" },
+        { "label": "Package scope", "value": "751 MB, which is consistent with carrying every FPGA design for every card type plus an x86 system image for the COM Express module. Not confirmed — the package was not opened", "confidence": "inferred" },
+        { "label": "Certificates", "value": "The simulator ships `device-livePremier-chain-cert.pem`, so the platform has a device certificate chain. Its use was not investigated", "confidence": "verified" },
+        { "label": "Card and design validation", "value": "The firmware carries `CheckFpgaDesign`, `CheckHardwareSlot` and a `MISMATCH` design state meaning \"FPGA design mismatch card type\", so cards are identified and their designs matched at boot. Whether that check is cryptographic or a plain identifier comparison is not known", "confidence": "unknown" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The AWJ control API", "note": "The whole device model is a JSON tree over a documented interface, and the web client that drives it ships unminified with the generator's comments intact. This is the most thoroughly self-documenting machine in the index, and everything useful about it is reachable without touching the encrypted package." },
+        { "rank": 2, "item": "Standards-based transport", "note": "ST2110, NMOS, NDI, SDVoE and Dante are all first-class. Anything that wants to get pictures or audio in or out of this platform should do it through one of those rather than through the vendor's own plumbing." },
+        { "rank": 3, "item": "Nothing inside the frame", "note": "Arria 10 designs delivered inside an encrypted package, matched to card identifiers at boot, with an ATSAM gatekeeping each card. There is no third-party route into the video path and no reason to look for one." }
+      ],
+      "verdict": "Hardware, and the manufacturer says so in its own source comments. RS models are factory-fixed card lists; C, C+, Cmax and Cmini are the same chassis in configurable form. One firmware package covers the family, cards are discovered and their FPGA designs matched at boot, and the machine is whatever is plugged into it. The architecture is a clean three-layer split: a COM Express Xeon-D module for the application and web interface, an ATSAM per card for local control, and Arria 10 GX fabric doing all the video behind a lane-based crosspoint. Its most useful property for anyone studying it is accidental — the web bundle was shipped with comments, and those comments document 387 internal enumerations of a machine whose firmware is otherwise sealed.",
+      "openQuestions": [
+        "What `VDW_*` is. Three chassis variants with a dedicated `FORCE_VDW` processing mode, no product page and no artwork. Video-wall is the obvious guess from the initials and it is only a guess.",
+        "Whether the boot-time card and design check is cryptographic. `CheckFpgaDesign` and the `MISMATCH` state prove a check exists; nothing in the files says what it compares.",
+        "The Arria 10 part per card role. `_66` clearly marks the 660K die on the output designs, which implies the unsuffixed designs target something smaller, but the specific parts are not named anywhere.",
+        "How much of the simulator's behaviour is the real firmware. It is a build of the device application, not a reimplementation, but it has been compiled for macOS and the boundary between simulated and real was not mapped.",
+        "The `.awp` key, which is on the device side and was not pursued."
+      ],
+      "traps": [
+        "Going after the encrypted 751 MB package first. It is the obvious artifact and it yields four statistics; the simulator sitting in `/Applications` carries eleven complete firmware trees and a web bundle that was never minified. Check what the vendor already gave you before attacking what they locked.",
+        "Taking `AQL` and `NLC` for different products. They are the same platform — `NLC` is the internal name and appears in the code, the build paths and the web app manifest, while `AQL` appears only in user-facing labels. Searching for one and not the other halves what you find.",
+        "Assuming the enum *names* and the enum *value strings* live together. The binary holds the names `ENUM_CHASSIS_TYPE`, `ENUM_CARD_FEBE_MEZZA_TYPE` and so on in one table and their values in another, hundreds of kilobytes apart. Grepping for the name and finding nothing useful around it suggests the values are absent when they are simply elsewhere.",
+        "Reading the 64-entry scaler enumeration as sixty-four independent layer engines. They are four processing cards × eight mixers × an A/B pair, and the pairing is what makes a main-and-preview transition possible. The flat list hides the structure that matters."
+      ]
     }
   ]
 }

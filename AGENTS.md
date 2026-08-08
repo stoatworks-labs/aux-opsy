@@ -7,10 +7,13 @@ Read this before editing. See `README.md` for what the project *is*.
 
 **Verified in this repo:**
 
-- The site builds clean (14 pages) and every route renders.
+- The site builds clean (17 pages, 16 in the sitemap) and every route renders.
 - Search, status filter, class filter and all six sort orders were exercised in a real
   browser and produce correct results — including the year sort parking the undated entry
   (LOOM) last in both directions.
+- The fourth class, `Video presentation switcher`, filters to exactly the three Analog Way
+  entries and sorts to the end of the class order. Re-checked in the browser after they
+  were added.
 - Light and dark both render correctly, with the navy band surviving in light mode.
 - **Live at `https://aux-opsy.com`** (and `www.`), deployed as a Cloudflare Worker serving
   static assets (not a Pages project — the fleet has none). Public repo at
@@ -48,6 +51,25 @@ here.** When the research moves, this file has to be edited by hand.
 4. **The scope boundaries on `/method/` are binding, not aspirational.** No entitlement or
    licensing analysis, no exploits, no modification instructions, no redistribution of
    manufacturer material. If new research crosses one of those lines, it does not come here.
+
+## Two strands, one method
+
+The site started as consoles only and now covers **digital mixing consoles and video
+presentation switchers**. The h1, both meta descriptions, the method page's purpose section,
+`Base.astro`'s footer and JSON-LD, `llms.txt` and the README were all broadened together —
+if you add a third strand, they all have to move again, and the `class` field is what keeps
+them separable in the index.
+
+Two consequences worth knowing:
+
+- **Do not reintroduce a hard count of teardowns.** The home page and `llms.txt` used to say
+  "two of the four teardowns concluded no". That went stale silently as entries were added
+  and was wrong long before anyone noticed. Both now say "several", which stays true.
+- **Method boundary 1 gets closer on the video pages.** These platforms are sold as tiers of
+  one design, so "what differs between the models" is a natural question — and it is a
+  question about card population and firmware images, not about entitlement. The purpose
+  section says so explicitly. Keep it that way: record the structural fact, never the
+  mechanism for changing it.
 
 ## The naming-policy departure — do not "fix" it
 
