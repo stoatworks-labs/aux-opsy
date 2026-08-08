@@ -198,6 +198,213 @@
     },
 
     {
+      "id": "allen-heath-avantis",
+      "manufacturer": "Allen & Heath",
+      "model": "Avantis",
+      "family": "dLive lineage (XCVI core)",
+      "class": "Digital mixing console",
+      "introduced": 2020,
+      "status": "documented",
+      "tags": ["x86 control host", "Xilinx FPGA DSP", "Linux", "MD5-only updates", "No signing"],
+      "summary": "The structural inverse of the SQ: the control plane is a commodity x86 Linux box, and the mixing runs on a subordinate Xilinx FPGA the host programs at boot. OS updates carry integrity checksums but no signature.",
+      "headline": "The V2.01 package is an x86-64 Qt application on a Tiny-Core-derived Linux, plus microcontroller and FX images — the mix FPGA's bitstream isn't even a file in it, and the whole update validates on MD5 alone.",
+      "method": "Static analysis of the V2.01 update package: the unstripped `Updater`, the stripped `Console` Qt binary and the plaintext OS scripts (`detect_sbc.sh`, `set_ssh.sh`, `PartitionCheck.sh`). No hardware inspected.",
+      "artifacts": [
+        "`AllenHeath-Avantis-V2.01.zip` — Console V2.01 (rev 97241), OS V1.32; covers both Avantis and Avantis Solo",
+        "`Updater` — 1 MB x86-64, unstripped: the update and checksum logic in the clear",
+        "`dCorefocal64.gz` (~22 MB Tiny-Core-derived x86 rootfs) and `vmlinuzfocal64` (5.4.3 kernel)"
+      ],
+      "hardware": [
+        { "label": "Control plane", "value": "An x86-64 single-board computer running Linux — the UI/control host only, not the mixer. `detect_sbc.sh` enumerates the shipped boards by CPU: Kontron D3543/D3544 (Gemini Lake J5005/J4005), Advantech AIMB-218 (Elkhart Lake N6211/J6413) and Kontron K3921-H (Alder Lake-N i3-N305 / N97). The console has migrated SBCs across its production life", "confidence": "verified" },
+        { "label": "Audio engine", "value": "A Xilinx FPGA, not the x86 host. `Console` carries the host-side stack — `FPGALoader`, `FPGAMixer`, `FPGAInputProc`, `FPGAMixProc`, `MixRackFPGAProgramming` — with Xilinx boot strings (`FSBL`, `Bitstream not loaded into PL`, `BITSTREAM_DOWNLOAD_FAIL`): a Zynq-class part in A&H's XCVI lineage that the host programs at boot", "confidence": "verified" },
+        { "label": "FX DSP", "value": "A separate FDSP/UltraFX effects FPGA driven over an SPI→AXI bridge (`FDSPFxV2SPIToAXIController`, `FDSP Ultra Fx FPGA loader and Programming failed`)", "confidence": "verified" },
+        { "label": "Host ↔ engine interface", "value": "Custom kernel character devices — `/dev/ah_audio`, `/dev/ah_surface`, `/dev/ah_motor_left`, `/dev/ah_motor_right` — form the x86↔FPGA/surface boundary; the Avantis analogue of the SQ's on-chip PS↔PL AXI bridge", "confidence": "verified" },
+        { "label": "Surface / I/O controllers", "value": "Motor-fader, user-control and main-board MCUs (with bootloaders) plus IP port-controllers (IP1/IP4/IP6/IP8/IPG8, all V1.44) are flashed from the host", "confidence": "verified" },
+        { "label": "Storage / boot", "value": "Ordinary PC storage: GRUB on `/dev/sda`, with root, a ~20 GB audio-files partition and swap created at runtime (`PartitionCheck.sh`). No A/B multiboot — a normal Linux boot, unlike the SQ's Zynq multiboot banks", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "A Tiny-Core-derived x86 Linux: a `dCorefocal64.gz` root filesystem, a 5.4.3 kernel (`vmlinuzfocal64`, `-tinycore64`) and Ubuntu-18.04-era userland `.deb`s, with X11 and a Qt compositor", "confidence": "verified" },
+        { "label": "Host application", "value": "`Console` — 41 MB stripped Qt5 PIE (links `libQt5Core`/`libQt5Network`) — plus `Compositor` and an 81 MB `TouchScreen` binary. `Updater` ships unstripped", "confidence": "verified" },
+        { "label": "Variants", "value": "One package serves both the Avantis surface and the rackmount Avantis Solo (`Firmware/Solo/…`, Solo OS v1.13); this build is Console V2.01 rev 97241, OS V1.32", "confidence": "verified" },
+        { "label": "Debug SSH", "value": "sshd is off unless a flag file appears: `set_ssh.sh` starts it at boot if `~/.ah_debug`/`.ah_ssh` exists or an `ah_debug`/`ah_ssh` file sits in the root of an inserted USB stick — an intentional, trivially-triggered service door", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Update validation", "value": "Integrity, not authenticity. `Updater` checks the package against `Firmware.md5` (`VerifyChecksum`, `CheckChecksum`, `CorruptFirmware`) and sends header/data checksums to each MCU it flashes. No signature, RSA, GPG or public key anywhere in the update path — the SQ's 'CRC only, no signing' posture, here as MD5", "confidence": "verified" },
+        { "label": "FPGA boot", "value": "The audio FPGA's boot flow references Xilinx RSA authentication that appears switched off (`RSA_SUPPORT_NOT_ENABLED_FAIL`) — matching the SQ's unsigned, analysable bitstream. What, if anything, is actually signed is not established", "confidence": "inferred" },
+        { "label": "Add-on entitlement", "value": "A paid add-on system (marketed as the 'dPack') exists; its mechanism is out of scope and was not analysed — see the methodology page", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Interoperability, not rehosting", "note": "Avantis speaks published control (MIDI/TCP and the SQ/dLive-family remote protocols) and takes gigaACE/Dante/Waves I/O. Almost everything that motivates looking at the firmware is better served here and needs no reverse engineering." },
+        { "rank": 2, "item": "The host ↔ FPGA interface — the one thing worth mapping", "note": "`/dev/ah_audio` and the FPGA programming / SPI→AXI path expose the stock engine to userspace. Documenting that boundary turns the black box into commandable hardware — the Avantis version of the SQ's undocumented AXI register map, and reachable from an SSH shell without writing to flash." },
+        { "rank": 3, "item": "The audio / FX FPGA bitstreams", "note": "Zynq-class and, on the RSA evidence, unsigned — so analysable in principle. In practice a very large project, downstream of understanding the register interface, and not step one." }
+      ],
+      "verdict": "The structural inverse of the SQ. Where the SQ hid a whole console inside one bare-metal Zynq, the Avantis splits the job: an open, SSH-able x86 Linux control plane over a Xilinx FPGA audio engine it programs at boot. Nothing on the control side is protected — updates ride on MD5, SSH is a USB flag away — yet the parts worth having, the FPGA engine and the host↔PL interface, are exactly the parts the update package does not hand you.",
+      "openQuestions": [
+        "Where the mix-FPGA bitstream lives — it is not a standalone file in the package, so it is embedded in `Console` or carried inside `dCorefocal64.gz` and loaded by the host at boot.",
+        "The exact Zynq/XCVI part and the layout of the SPI→AXI register interface — the whole audio path sits behind `/dev/ah_audio` and is undocumented.",
+        "Whether the `RSA_*` strings mean anything is enabled, or are dormant Xilinx boot-flow capability."
+      ],
+      "traps": [
+        "The x86 host is not the mixer. The audio path is a Xilinx FPGA the host merely programs and drives over `/dev/ah_audio`; reversing the Qt binary tells you about control and UI, not DSP — the same split as the SQ, where the bitstream was the mixer.",
+        "`Firmware.md5` is an integrity manifest, not a signature. A repacked update with a recomputed MD5 would pass — do not read the checksum step as authentication.",
+        "Crypto strings in `Console` are not proof of a cryptographic validator or a signed update — several digests belong to libarchive and the RSA strings sit in the FPGA boot flow. Attribute crypto only after tracing the specific path."
+      ]
+    },
+
+    {
+      "id": "allen-heath-qu",
+      "manufacturer": "Allen & Heath",
+      "model": "Qu-5 / Qu-6 / Qu-7",
+      "family": "Qu 2nd-gen — SQ platform lineage",
+      "class": "Digital mixing console",
+      "introduced": 2024,
+      "status": "documented",
+      "tags": ["Zynq PS + discrete FPGA", "Bare metal", "SQ-derived", "FDSP FX V2", "No signing"],
+      "summary": "The 2nd-generation Qu is SQ silicon in a Qu suit: a bare-metal Xilinx Zynq boots and configures discrete 7-series FPGAs for the audio path, sharing the SQ's boot BSP and the Avantis's FX subsystem.",
+      "headline": "The 65 MB Qu-7 update is one unencrypted Xilinx boot image carrying six PL bitstreams, with the SQ's exact boot BSP and the same FDSP FX V2 as the Avantis. The second-generation Qu is the SQ platform rebadged, not the 2014 Qu-16/24/32.",
+      "method": "Static analysis of the Qu-7 V1.1.3 (r3931) update .bin and the bundled Qu-5/6/7 update-instructions PDF. No hardware inspected; no bitstream disassembled. The classic Qu-16/24/32 is a separate earlier platform and is not covered.",
+      "artifacts": [
+        "`Qu-7UPG_1_1_3_r3931.bin` — 65 MB, a single Xilinx Zynq boot image (`XLNX` header, encryption status 0)",
+        "`Qu567_FirmwareUpdateInstructions.pdf` — names the generation: Qu-5/5D, Qu-6/6D, Qu-7/7D; update via Qu-MixPad or a FAT32 USB drive in the Qu-A port",
+        "`QUDante16.q16` — the Qu Dante-16 option-card image (Audinate module), 28 MB; not analysed here"
+      ],
+      "hardware": [
+        { "label": "SoC / boot", "value": "A Xilinx Zynq PS (ARM) — boot header `AA995566`/`XLNX` with encryption status 0, `Xilinx First Stage Boot Loader`, `PS7 initialization successful`, and the Zynq PS-driver BSP (`xemacps`, `xscugic`, `xdevcfg`, `xqspips`, `xiicps`, `xttcps`, `xuartps`, lwIP 2.0.3 xilinx_modified) — the identical BSP to the SQ", "confidence": "verified" },
+        { "label": "Audio / FX fabric", "value": "Discrete 7-series FPGA, not the Zynq PL: the image carries six PL bitstreams and the only device IDCODE present is `0x0362e093` (Artix-class, XC7A15T/35T die), with no Zynq-7000 device code anywhere — the Zynq boots and configures the fabric", "confidence": "verified" },
+        { "label": "FX subsystem", "value": "A dual-core FDSP FX V2 (`FDSPFxV2SystemCore0/1`, `Both FX Zynqs booted`) — the same FX subsystem as the Avantis, down to identical `Bitstream CRC: 0x8948 / 0xE489`", "confidence": "verified" },
+        { "label": "PS cores", "value": "AMP across the two PS cores, not SMP (`CPU1: clearing flag for CPU0`, a `START_SYNC` shared region, `Handoff Address (Core0/1)`) — the SQ's AMP model", "confidence": "verified" },
+        { "label": "Storage", "value": "QSPI NOR boot (`Boot mode is QSPI`, `xqspips`) plus eMMC for scenes and libraries (`… EMMC ERROR`); USB recording under `/AH_QU/USBRec`", "confidence": "verified" },
+        { "label": "Surface", "value": "Motor-fader MCUs flashed from the host (`Expected Fader Version %u.%u, updating…`)", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "None — a bare-metal Xilinx standalone BSP (FSBL + AMP), with no Linux, FreeRTOS or ThreadX strings. The SQ's model, not the Avantis's x86 Linux", "confidence": "verified" },
+        { "label": "This build", "value": "Qu-7 firmware V1.1.3 (r3931); the image also carries `This Qu is running pre-production firmware` and `Silicon Version 3.1`", "confidence": "verified" },
+        { "label": "Update tooling", "value": "Applied over the Qu-MixPad app (iOS/Android/Windows/Mac) or a FAT32 USB stick in the Qu-A port, per the bundled Qu-5/6/7 instructions", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Boot image", "value": "Unencrypted and analysable — boot-header encryption status `0x00000000`; the FSBL knows about eFUSE security (`EFUSE_SEC_EN bit is set, Encryption is mandatory`) but that bit is not set on this image. The SQ's posture", "confidence": "verified" },
+        { "label": "Update validation", "value": "CRC/checksum only, no signature: `Error, invalid image Checksum`, `PARTITION_CHECKSUM_FAIL`, `Partition DataChecksum 0x%0x != 0x%0x`, `File failed CRC check`. No signing primitive in the update path — the `AES` strings are audio channels", "confidence": "verified" },
+        { "label": "Add-on entitlement", "value": "A paid add-on system exists; its mechanism is out of scope and was not analysed — see the methodology page", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Interoperability, not rehosting", "note": "The Qu speaks published MIDI/TCP control and the Qu-MixPad protocol, and takes dSNAKE/gigaACE/Dante/Waves I/O. Almost everything that motivates looking at the firmware is better served here." },
+        { "rank": 2, "item": "The Zynq ↔ FPGA interface", "note": "As on the SQ, the audio engine sits in fabric behind the Zynq; mapping that boundary turns it into commandable hardware. Because the platform is shared, this is largely the same work as the SQ's undocumented AXI/config interface." },
+        { "rank": 3, "item": "The FPGA bitstreams", "note": "Unencrypted 7-series and analysable in principle (Project X-Ray covers Artix-7), but a very large project and downstream of the interface. Not step one." }
+      ],
+      "verdict": "The second-generation Qu is not a descendant of the 2014 Qu-16/24/32 — it is the SQ platform in a cheaper suit: the same bare-metal Zynq, the same PS-driver BSP, the same FDSP FX V2 as the Avantis. Anything already learned from the SQ's platform carries straight over; the classic Qu is the genuinely separate, still-undocumented target.",
+      "openQuestions": [
+        "The classic Qu-16/24/32/Pac/SB (2014) is a separate, earlier platform — NXP Cortex-M + Blackfin + FPGA, bare-metal, no add-ons — documented in its own entry; the two Qu generations share only the brand.",
+        "The exact Zynq PS part is not pinned: no Zynq device IDCODE appears in the image; only the discrete FPGA's `0x0362e093` was decodable.",
+        "The Qu Dante-16 option card (`QUDante16.q16`, an Audinate module image) was not analysed."
+      ],
+      "traps": [
+        "The 2nd-gen Qu (Qu-5/6/7) and the classic Qu-16/24/32 share a name and, on this evidence, nothing else — do not carry a finding from this image back to a 2014 Qu.",
+        "`FSBL` / `PS7 init` prove a Zynq PS, but the absence of any Zynq device IDCODE means the configured fabric is discrete 7-series FPGA — don't read 'Zynq' here as 'mixing in the Zynq PL' the way the SQ does.",
+        "The `AES` strings are AES3 audio channels and `EFUSE_SEC_EN` is an FSBL capability check — neither is evidence of a signed or encrypted image. The boot-header encryption status (0) is the authority."
+      ]
+    },
+
+    {
+      "id": "allen-heath-qu-classic",
+      "manufacturer": "Allen & Heath",
+      "model": "Qu-16 / Qu-24 / Qu-32 (+ Qu-Pac / Qu-SB)",
+      "family": "Qu 1st-gen (2014)",
+      "class": "Digital mixing console",
+      "introduced": 2014,
+      "status": "documented",
+      "tags": ["Cortex-M + Blackfin", "FPGA", "Bare metal", "No add-ons", "No signing"],
+      "summary": "The original Qu is a 2014 multi-chip embedded design — an NXP Cortex-M control MCU, an Analog Devices Blackfin audio DSP and an FPGA — with every processing block included and no paid-add-on lock. It shares nothing but a brand with the SQ-derived 2nd-gen Qu.",
+      "headline": "The 5.8 MB `.QUU` update is a bare-metal Cortex-M image — its crash handler dumps CFSR/HFSR/BFAR — with A/B host sections and BCC checksums, no Zynq and no paid add-ons. This is the machine the new Qu replaced, not a relative of it.",
+      "method": "Static analysis of the Qu-32 V1.99 (build 4583) `.QUU` update and the V1.99 release notes. No hardware inspected. V1.99 (Nov 2025) is the final maintenance release; one firmware per model (Qu-16/24/32/Pac/SB).",
+      "artifacts": [
+        "`Qu32UpdtV1_99_4583.QUU` — 5.8 MB, a sectioned flash image (`BCC`-checked Host Section A/B), FAT-based",
+        "`Release Notes Qu firmware V1.99.pdf` — V1.99 covers Qu-16, Qu-24, Qu-32, Qu-Pac, Qu-SB",
+        "`How to Update Qu Firmware.pdf`"
+      ],
+      "hardware": [
+        { "label": "Control MCU", "value": "An ARM Cortex-M (ARMv7-M) — the crash handler dumps `CFSR`/`HFSR`/`BFAR`/`MMFAR`/`DFSR`, the Cortex-M fault registers, and `lwiplpc` points to an NXP LPC part. Bare-metal, no RTOS or Linux", "confidence": "verified" },
+        { "label": "Audio DSP", "value": "Analog Devices Blackfin (`ABF5T` → ADSP-BF5xx) as a separate audio processor — `CPU ID`, `Audio ID` and `Surface ID` are distinct devices", "confidence": "inferred" },
+        { "label": "FPGA", "value": "An FPGA is present (`FPGA not Initialised`); vendor and part not identified from the image", "confidence": "verified" },
+        { "label": "Topology", "value": "A multi-chip board — distinct CPU, Audio and Surface processors, each with its own ID and firmware version — not a single SoC. The opposite of the 2nd-gen Qu's Zynq", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "None — bare-metal (a Cortex-M hard-fault handler, no RTOS/Linux strings)", "confidence": "verified" },
+        { "label": "This build", "value": "Qu-32 firmware V1.99 build 4583 (2025-10-02) — the final maintenance release for the range", "confidence": "verified" },
+        { "label": "Range", "value": "V1.99 covers Qu-16, Qu-24, Qu-32, Qu-Pac and Qu-SB, as five per-model firmware files", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Update validation", "value": "CRC/BCC integrity only, no signature. The sectioned `.QUU` carries a BCC per section (`BCC Matches for Host Section A/B`, `BCC Fails … restarting`) with CRC checks on scenes and libraries (`Bad CRC from external Library …`). No RSA/SHA/signing — the `AES` strings are audio", "confidence": "verified" },
+        { "label": "Recovery", "value": "A/B host sections provide a failed-update fallback (`BootUpdateCheckHostBCCSectionA`, restart-on-BCC-fail)", "confidence": "verified" },
+        { "label": "Add-ons", "value": "None. There is no paid add-on or entitlement system — every effect and processing block ships enabled. The only `Unlock` is the front-panel screen lock. A sharp break from the SQ-derived 2nd-gen Qu", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Interoperability, not rehosting", "note": "The Qu speaks MIDI/TCP control and the Qu-Pad/Qu-You apps and takes dSNAKE I/O. Anything that motivates looking at the firmware is better served here." },
+        { "rank": 2, "item": "Rehosting is a poor fit", "note": "A multi-chip 2014 embedded design with no single SoC to replace, and the audio living in Blackfin + FPGA behind opaque interfaces. There is no equivalent of the SQ's one-Zynq target." },
+        { "rank": 3, "item": "The .QUU container", "note": "Simple and unsigned — sections guarded by a BCC — so trivially repackable for integrity. There is little reason to, and it buys no access to the audio path." }
+      ],
+      "verdict": "A period-typical 2014 embedded mixer — Cortex-M control, Blackfin audio, an FPGA, bare-metal, unsigned, everything included. Its only real relationship to the SQ-lineage 2nd-gen Qu is the badge; nothing carries across. A poor and largely pointless rehosting target, and now EOL at V1.99.",
+      "openQuestions": [
+        "The exact parts — the NXP LPC control MCU, the Blackfin variant and the FPGA vendor — are not pinned from strings alone.",
+        "How the three processors (CPU / Audio / Surface) partition work and communicate is unmapped.",
+        "Whether the surface-less Qu-Pac / Qu-SB differ internally beyond the surface MCU."
+      ],
+      "traps": [
+        "Do not conflate with the 2nd-gen Qu (Qu-5/6/7): that is a Xilinx-Zynq, SQ-derived platform; this shares only the name.",
+        "The `Unlock` string is the front-panel screen lock, not a paid add-on — the classic Qu has no entitlement system at all.",
+        "`BCC` is a block-check integrity value, not a signature; the A/B sections are for update resilience, not authentication."
+      ]
+    },
+
+    {
+      "id": "allen-heath-dante-klante",
+      "manufacturer": "Allen & Heath",
+      "model": "Dante option card (KLANTE)",
+      "family": "KLANTE — Brooklyn II replacement",
+      "class": "Networked audio module",
+      "introduced": 2024,
+      "status": "documented",
+      "tags": ["Zynq-7010", "Dante IP core", "Embedded Linux", "SWUpdate", "RSA-signed"],
+      "summary": "A&H's in-house replacement for the Audinate Brooklyn II Dante module, codenamed KLANTE: a Xilinx Zynq-7010 running embedded Linux that hosts Audinate's Dante IP core. It is the one A&H firmware in this index that is cryptographically signed.",
+      "headline": "The 28 MB `.q16` is a SWUpdate package — and unlike every A&H console here, it is RSA-signed with per-image SHA-256. Inside is a whole Zynq-7010 Linux system (`KlanteDDR_7010_RU.bit`, U-Boot, kernel, JFFS2) running the Dante IP core, not an off-the-shelf Audinate module.",
+      "method": "Static analysis of `QUDante16.q16` V1.0.2 — a SWUpdate cpio whose `sw-description` manifest, `.bit` bitstream header and boot payloads name every component. No hardware inspected.",
+      "artifacts": [
+        "`QUDante16.q16` — a SWUpdate cpio: signed `sw-description` + `.sig`, `boot.bin`/`u-boot.img`/`uImage`/`devicetree.dtb`, rootfs, FPGA bitstream, and the Dante `cap1.bin`",
+        "`KlanteDDR_7010_RU.bit` — Vivado 2019.2, part `7z010clg400`, design `KlanteDDRTop`, built 2024-10-31"
+      ],
+      "hardware": [
+        { "label": "SoC", "value": "Xilinx Zynq-7010 (XC7Z010, clg400) — IDCODE `0x03722093` read straight from the bitstream, part string `7z010clg400`; the manifest's `hardware-compatibility: 7010revA` agrees", "confidence": "verified" },
+        { "label": "Role", "value": "A&H's own Dante endpoint, codenamed KLANTE (string `KLANTE - Brooklyn II replacement module`) — it replaces the Audinate Brooklyn II (itself a Zynq-7020) with a cheaper 7010 running the Dante IP core in software", "confidence": "verified" },
+        { "label": "Dante core", "value": "Dante is a loadable IP core, not a drop-in module: `cap1.bin` is installed to `/dante/cap/cap1.bin` (the manifest's `files` section) — Audinate Dante IP licensed onto A&H silicon", "confidence": "verified" },
+        { "label": "FPGA design", "value": "`KlanteDDRTop`, Vivado 2019.2, bitstream `KlanteDDR_7010_RU.bit` built 2024-10-31 — the small 7010 PL that carries the Dante glue", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "Embedded Linux, not bare-metal — Buildroot 2018.02 (arm gnueabihf, gcc 6.4.0), booted FSBL (`boot.bin`) → U-Boot → `uImage` + `devicetree.dtb` + `rootfs.cpio.uboot` initramfs, with a `userddr.jffs2` data partition. The only A&H design here that runs Linux on audio-side silicon", "confidence": "verified" },
+        { "label": "This build", "value": "QUDante16 V1.0.2; internal version `0.1.0`, codenames KLANTE / 'Blueberries'", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Signed updates", "value": "The one signed A&H firmware in this index. SWUpdate verifies a detached `sw-description.sig` (256 B → RSA-2048, raw PKCS#1) over the manifest, and every image and script carries a SHA-256 checked against that signed manifest — authenticity, not just integrity, the opposite of the consoles' CRC/MD5-only posture", "confidence": "verified" },
+        { "label": "Recovery", "value": "Full A/B redundancy: every partition has a `_backup` twin (kernel, FPGA, rootfs, device-tree, u-boot) written in the same update", "confidence": "verified" },
+        { "label": "Container", "value": "`.q16` is a plain SWUpdate cpio — `cpio -idm` yields the whole parts list (manifest, signature, boot chain, bitstream, Dante cap)", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "It is a Dante endpoint — interoperate, don't rehost", "note": "The whole point of the card is Dante/AES67 networking; Dante Controller and the published protocols cover the useful surface without touching firmware." },
+        { "rank": 2, "item": "The signature is the real barrier", "note": "Unlike the consoles, the update path is RSA-signed, so swapping firmware is gated by the signing key rather than a recomputable checksum. Whether Zynq secure boot is also fused is the open question." },
+        { "rank": 3, "item": "The 7010 FPGA", "note": "A small Zynq-7010 PL (`KlanteDDRTop`) carrying the Dante DDR/MAC glue — analysable in principle but niche, and downstream of no useful goal." }
+      ],
+      "verdict": "The interesting outlier of the A&H set. Where the consoles are unsigned and open, this little Zynq-7010 — A&H's in-house Brooklyn II replacement — runs Linux and is the only firmware here protected by a real signature. The strong crypto in this ecosystem lives on the Audinate-derived network module, not on the mixers.",
+      "openQuestions": [
+        "Whether Zynq-7010 secure boot (an RSA-authenticated FSBL) is actually fused on, or only SWUpdate-level signing is enforced — `boot.bin` was not checked for an authentication certificate.",
+        "Which A&H products share the KLANTE module — it is framed as a general Brooklyn II replacement, not Qu-specific.",
+        "The Dante IP-core version inside `cap1.bin` and its licensing terms."
+      ],
+      "traps": [
+        "`.q16` is a standard SWUpdate cpio, not an opaque A&H container — `cpio -idm` plus the `sw-description` manifest give you the entire parts list and per-file hashes.",
+        "The RSA signature is over the SWUpdate manifest (`sw-description.sig`), which is not the same as Zynq secure boot — a signed update does not prove the boot chain itself is authenticated.",
+        "KLANTE is a general Brooklyn II replacement, so a finding here may generalise to any A&H product that uses this Dante card, not just the Qu."
+      ]
+    },
+
+    {
       "id": "midas-hd96",
       "manufacturer": "Midas",
       "model": "HD96",
