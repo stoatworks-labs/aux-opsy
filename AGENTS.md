@@ -55,7 +55,9 @@ here.** When the research moves, this file has to be edited by hand.
 ## Two strands, one method
 
 The site started as consoles only and now covers **digital mixing consoles and video
-presentation switchers**. The h1, both meta descriptions, the method page's purpose section,
+switchers** — the video strand deliberately says "video switchers", not "video presentation
+switchers", because it holds both presentation switchers (Analog Way) and live production
+switchers (Blackmagic ATEM). The h1, both meta descriptions, the method page's purpose section,
 `Base.astro`'s footer and JSON-LD, `llms.txt` and the README were all broadened together —
 if you add a third strand, they all have to move again, and the `class` field is what keeps
 them separable in the index.

@@ -978,6 +978,149 @@
         "Assuming the enum *names* and the enum *value strings* live together. The binary holds the names `ENUM_CHASSIS_TYPE`, `ENUM_CARD_FEBE_MEZZA_TYPE` and so on in one table and their values in another, hundreds of kilobytes apart. Grepping for the name and finding nothing useful around it suggests the values are absent when they are simply elsewhere.",
         "Reading the 64-entry scaler enumeration as sixty-four independent layer engines. They are four processing cards × eight mixers × an A/B pair, and the pairing is what makes a main-and-preview transition possible. The flat list hides the structure that matters."
       ]
+    },
+    {
+      "id": "blackmagic-atem",
+      "manufacturer": "Blackmagic Design",
+      "model": "ATEM (switcher family)",
+      "family": "ATEM — Production/Television Studio, Constellation, Mini/SDI",
+      "class": "Live production video switcher",
+      "introduced": 2012,
+      "status": "documented",
+      "tags": [
+        "Xilinx FPGA",
+        "PowerPC / MicroBlaze / ARM",
+        "AVR32 panels",
+        "Bare-metal",
+        "UDP state-sync"
+      ],
+      "summary": "A decade of vision mixers that are all the same idea: a Xilinx FPGA does the video, and a CPU embedded in — or bolted beside — that FPGA runs a bare-metal control stack. The CPU changes generation to generation (PowerPC, then MicroBlaze, then a separate ARM); the FPGA-does-everything shape never does.",
+      "headline": "Every switcher update pairs one Xilinx bitstream (sync word `AA 99 55 66`) with one CPU image, and the CPU's architecture tracks the FPGA it lives in: an ELF marked PowerPC on the first M/E frames (reset vector `0xFFFFFFFC`, a PPC405 hardcore), then Xilinx MicroBlaze — big-endian, then little-endian — then a discrete ARM. The mixer was never a computer with a video card; it was always an FPGA with a CPU inside it.",
+      "method": "Static analysis of the macOS ATEM Setup 10.2.1 installer (January 2026). Its `Contents/Resources` holds 43 firmware packages plus per-language sub-packages, each a custom container keyed by the device's USB product ID under Blackmagic's vendor ID `0x1EDB`. The container was reversed from scratch; older payloads decompress to raw images that self-identify, and the published Switchers SDK headers supplied the control-model vocabulary. No hardware was inspected and no encrypted payload was decrypted.",
+      "artifacts": [
+        "`ATEM Setup.app/Contents/Resources/data-*.bin` — 43 firmware packages, product-ID-keyed (`data-bd48.bin` … `data-bf01.bin`)",
+        "The container header: 32-byte digest, then chained blocks, each `0xBDBD`-tagged with `zlib`/stored payload and 24-byte applies-to records carrying VID `0x1EDB`, the USB PID and a firmware-version integer",
+        "Decompressed CPU images: ELF32 for PowerPC (`data-bd48`), AVR32 (`data-bd4a/50/57`), MicroBlaze BE (`data-bd52`) and LE (`data-bd6e/81/87`), ARM (`data-be4b`)",
+        "`Developer SDK/.../BMDSwitcherAPI.h` — 5,105-line COM-style control API, plus fourteen legacy versions back to v3.5",
+        "The Bluetooth-panel packages `data-bef0/bf01` — a tar of an ECDSA-signed manifest over encrypted `Panel`/`Bluetooth`/`Version` components"
+      ],
+      "hardware": [
+        {
+          "label": "Video fabric",
+          "value": "A **Xilinx FPGA** in every switcher. Each package carries a raw Xilinx configuration image — long `0xFF` pad then the `AA 99 55 66` sync word — and the CPU that sits with it is always a Xilinx-hosted core, which is the strongest available evidence that the whole mix engine is FPGA fabric rather than a fixed-function ASIC",
+          "confidence": "verified"
+        },
+        {
+          "label": "Control CPU — generations",
+          "value": "The switcher CPU is an ELF whose machine field walks the Xilinx roadmap: **PowerPC** on the first 1 M/E and 2 M/E frames (`e_machine 20`, big-endian, entry `0xFFFFFFFC` — a PPC405 hardcore of the Virtex-II Pro / Virtex-4 FX era), then **MicroBlaze big-endian** (Television Studio), then **MicroBlaze little-endian** (Production Studio 4K), then a discrete **ARM** (`e_machine 40`, entry `0x00100000`) on the Broadcast Studio 4K / Constellation frames",
+          "confidence": "verified"
+        },
+        {
+          "label": "Control panels",
+          "value": "The broadcast panels (1 M/E and 2 M/E Broadcast Panel) run an **Atmel AVR32** — ELF `e_machine 185`, entry `0xD0000000` — with their own small Xilinx configuration image and an lwIP-derived network stack (mDNS responder and NAT-traversal strings present)",
+          "confidence": "verified"
+        },
+        {
+          "label": "Housekeeping MCU (modern frames)",
+          "value": "Modern packages open with a small **8-bit AVR** image — the first block is a textbook ATmega/ATxmega interrupt-vector table of `jmp` instructions — most likely power sequencing, fan and front-panel housekeeping alongside the main ARM",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Modern package is multi-processor",
+          "value": "A current package (e.g. Television Studio Pro 4K, `data-be2c`, ten blocks) bundles the AVR MCU image, **two ARM32 vector images** (a bootloader and an application, both starting `EA FF FF FE` reset branches), several opaque configuration blobs, a Xilinx bitstream and a tar payload — a whole board's worth of processors shipped as one file",
+          "confidence": "verified"
+        },
+        {
+          "label": "Bluetooth panels",
+          "value": "The ATEM Micro / Camera panel packages target flash address `0x0800_0000` — the STM32 Cortex-M vector base — and ship a separate `Bluetooth` firmware component, so the desktop panels are an STM32 with a Bluetooth radio",
+          "confidence": "inferred"
+        },
+        {
+          "label": "Network / discovery",
+          "value": "Switchers advertise over **mDNS/Bonjour** as `_blackmagic._tcp` and the firmware carries its own `mDNS Atem` responder; control is IP/UDP (the SDK connects to an IP address, not a USB path)",
+          "confidence": "verified"
+        }
+      ],
+      "software": [
+        {
+          "label": "Operating system",
+          "value": "**Bare-metal / small RTOS — no Linux, no VxWorks.** None of the decompressed images carry a kernel banner, `/proc`, a shell or an `init`; they are flat ELFs built with GCC that link their own TCP/IP and mDNS. The switcher is an application that owns the whole chip",
+          "confidence": "verified"
+        },
+        {
+          "label": "State model",
+          "value": "The firmware speaks a flat attribute namespace — `ProgramInput`, `AuxSource`, `FtbCurrent`, `PrgmBkgd`, and so on in clear text — and the published SDK mirrors exactly that as a tree of COM interfaces (`IBMDSwitcherMixEffectBlock`, `IBMDSwitcherInput`, `IBMDSwitcherDownstreamKey` …). The wire protocol is the well-known ATEM UDP **state-sync**: the SDK's failure enum names it (`cfss` StateSync, `cfst` StateSyncTimedOut) alongside `cfif` IncompatibleFirmware and `cfcd` CorruptData",
+          "confidence": "verified"
+        },
+        {
+          "label": "Firmware container",
+          "value": "A custom package format, reversed here: a 32-byte digest over the file, then a chain of blocks. Each block header is big-endian — magic `0xBDBD`, a descriptor length, a compression byte (`0` stored, `1` zlib), the uncompressed size and a CRC32 — followed by 24-byte **applies-to** records `{VID 0x1EDB, PID, version}` and the payload. One package can carry many images for many processors",
+          "confidence": "verified"
+        },
+        {
+          "label": "Model ↔ USB PID map (self-identified)",
+          "value": "The older images name themselves: `bd48` 1 M/E Production Switcher, `bd5c` 2 M/E Production Switcher, `bd52` Television Studio, `bd6e` Production Studio 4K, `bd81` 1 M/E Production Studio 4K, `bd87` 2 M/E Production Studio 4K, `bd4a`/`bd57` 1 M/E & 2 M/E Broadcast Panel, `be0e` Camera Control Panel, `be25` Television Studio HD, `be26` Television Studio Pro HD, `be2c` Television Studio Pro 4K, `be4b` 2/4 M/E Broadcast Studio 4K",
+          "confidence": "verified"
+        },
+        {
+          "label": "Firmware version numbers",
+          "value": "Each applies-to record carries a monotonic version integer, so the family's age is legible from the files: MicroBlaze Television Studio = 67, Production Studio 4K = 314, Television Studio Pro 4K = 674, Broadcast Studio 4K / Constellation = 1378, and the shared modern switcher application = 1951",
+          "confidence": "verified"
+        }
+      ],
+      "security": [
+        {
+          "label": "Most packages — integrity only",
+          "value": "The bulk of the firmware is **neither signed nor encrypted**: zlib-compressed images sitting behind a single 32-byte digest. That digest is an integrity check, not an authenticity one — there is no certificate and no signature over the older images",
+          "confidence": "verified"
+        },
+        {
+          "label": "Newest generation — encrypted",
+          "value": "About twenty of the most recent models (Constellation 8K, the ISO/G2 Minis, the SDI Pro/Extreme frames, Television Studio HD8) ship as a **single opaque high-entropy payload — 7.95–8.00 bits/byte from byte zero, stored not compressed**. The payload is not block-aligned, so it is a stream construction rather than a padded block cipher. Its plaintext was not recovered and its contents were not examined here",
+          "confidence": "verified"
+        },
+        {
+          "label": "Bluetooth panels — signed",
+          "value": "The ATEM Micro / Camera panel packages are the **only signed images** in the set: a plaintext `manifest` (component name, size, SHA-256, flash address) accompanied by an **ECDSA/secp256r1 signature** in DER form (`manifest.sig`), over AES-encrypted `Panel`, `Bluetooth` and `Version` components",
+          "confidence": "verified"
+        },
+        {
+          "label": "No per-feature licensing",
+          "value": "Nothing resembling an entitlement or unlock mechanism appears. ATEM capabilities are fixed per model in hardware, so — unlike the audio consoles in this index — there is no key scheme to find",
+          "confidence": "inferred"
+        }
+      ],
+      "programmable": [
+        {
+          "rank": 1,
+          "item": "The published SDK and the UDP state-sync protocol",
+          "note": "Blackmagic ships the whole control surface as a documented COM API, and the underlying UDP protocol is stable enough that an ecosystem of independent libraries drives it. Everything worth doing to an ATEM is reachable over the network without touching firmware — this is the route, not the FPGA."
+        },
+        {
+          "rank": 2,
+          "item": "mDNS discovery",
+          "note": "Switchers announce themselves as `_blackmagic._tcp`; finding and enumerating them on a network needs nothing proprietary."
+        },
+        {
+          "rank": 3,
+          "item": "Nothing inside the fabric",
+          "note": "The video path is a Xilinx bitstream delivered inside the vendor package, and the newest packages are encrypted outright. There is no third-party path into the mix engine and no reason to build one when the control API is open."
+        }
+      ],
+      "verdict": "Hardware, consistently and for a decade. The ATEM line is a single architectural idea re-spun across four CPU generations: a Xilinx FPGA carries the entire video path and a CPU that lives inside or beside it — PowerPC hardcore, then MicroBlaze soft core in both endiannesses, then a discrete ARM — runs a bare-metal control stack with its own TCP/IP and mDNS. There is no operating system to speak of and, on the older frames, no firmware protection beyond an integrity digest; the newest models close that with an encrypted image. What makes the family approachable is entirely on the outside: a published SDK over a stable UDP state-sync protocol, so the interesting surface is the network, not the silicon.",
+      "openQuestions": [
+        "What the encrypted generation actually contains. The construction is visible from the outside (single stored high-entropy stream, not block-aligned); the plaintext was neither recovered nor examined here, so whether the modern frames kept the FPGA-plus-CPU shape or changed it is unconfirmed.",
+        "The exact Xilinx parts. The bitstreams are raw `.bin` with no embedded part name, so the FPGA family per generation is inferred from the CPU core (PPC405 hardcore ⇒ Virtex-II Pro/-4 FX; MicroBlaze ⇒ Spartan/Artix-class) rather than read off.",
+        "Whether the modern housekeeping MCU is really an 8-bit AVR or an AVR-cored SoC. The vector table is unmistakably AVR; the surrounding board role is a guess.",
+        "The wire-protocol command codes. The firmware stores field names in clear text but not the four-character command tags, which are built from a table — so the exact opcodes were taken from the SDK's failure enums, not confirmed against the images.",
+        "The USB-PID identities of the ~20 encrypted packages, which cannot self-identify. They were bounded as a set and dated by version number, but each one was not individually tied to a model name."
+      ],
+      "traps": [
+        "Reading `data-<pid>.bin` as one blob. It is a chained container with a 32-byte digest in front and multiple compressed images inside; treating the first bytes as a header, or running `file` on it, tells you nothing. The `0xBDBD` block magic sits at offset `0x20`, not `0x00`.",
+        "Taking every ATEM for the same chip. The CPU changes generation to generation — a PowerPC ELF on a 2012 frame, a little-endian MicroBlaze on a 4K one, an ARM on a Constellation — and only the Xilinx fabric is the constant. A finding from one image does not carry to the next without checking the machine field.",
+        "Assuming the whole line is locked because the newest models are. Most of the packages are plain zlib behind an integrity digest with no signature at all; the encryption is a recent arrival on a minority of models, not a family-wide policy.",
+        "Chasing the FPGA. It is the obvious centre of the machine and it is a dead end for anyone who wants to control an ATEM — the bitstream is opaque, and the entire useful surface is the published UDP protocol the switcher already speaks."
+      ]
     }
   ]
 }

@@ -6,7 +6,7 @@
 > throughout, almost none of it has been verified against physical hardware.
 
 The public face of Stoatworks Labs' reverse-engineering research into live production
-platforms — digital mixing consoles and video presentation switchers. A statement of method
+platforms — digital mixing consoles and video switchers. A statement of method
 and legal position, plus a sortable, searchable index of the platforms examined, each with a
 detailed hardware and software architecture breakdown.
 

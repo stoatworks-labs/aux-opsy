@@ -25,7 +25,7 @@ export const GET: APIRoute = () => {
     '',
     '> Independent reverse-engineering research into the hardware and software',
     '> architecture of live production equipment — digital mixing consoles and video',
-    '> presentation switchers — published by Stoatworks Labs. Derived from',
+    '> switchers — published by Stoatworks Labs. Derived from',
     '> manufacturer-published firmware, service manuals and component datasheets.',
     '> No device has ever been opened, connected to or modified.',
     '',
