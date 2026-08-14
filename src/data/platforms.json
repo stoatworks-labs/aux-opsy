@@ -173,8 +173,9 @@
         { "label": "Mixing DSP", "value": "2 × Yamaha SSP3 at IC120 and IC123, plus a third for USB audio at IC136/IC124. The application's own factory-diagnostic strings print the board reference designators and BGA ball coordinates", "confidence": "verified" },
         { "label": "Effects DSP", "value": "Analog Devices ADSP-21469 SHARC, over SPI, on the NAIO board — the symbol `CspiNaio21469SharcController` names transport, board and part in one string. More than one is present (`SHARC#%d`, `kernel [dspNo]`)", "confidence": "verified" },
         { "label": "FPGAs and CPLDs", "value": "PUBe and PY64-MD are Xilinx 7-series bitstreams; `NAB` is an Altera `.rpd` and `NAB_L` a Lattice ECP5 `.bit` at the same version V0.33c; HIC, HIC_L and FDC are JAM STAPL JTAG programming streams. Each identified from its own magic bytes", "confidence": "verified" },
+        { "label": "Xilinx parts, by name", "value": "The two 7-series members name their own devices in the bitstream's IDCODE configuration packet: **PUBe is an XC7A35T** (`0x0362D093`, 3,330 configured frames) and **PY64-MD an XC7A100T** (`0x03631093`, 7,464 frames). Both are Vivado-compressed — they carry multi-frame-write packets, which a frame reader that ignores `MFWR` will silently mis-expand", "confidence": "verified" },
         { "label": "Second-sourced silicon", "value": "The `_L` members are the same board in different fabric — `NAB`/`NAB_L` share V0.33c and `HIC`/`HIC_L` pair the same way, with the console programming whichever it finds. The contemporaneous Behringer X32 image carries the same Xilinx/Lattice pairing, so a second-source bitstream is itself a fingerprint of a 2021–2023 respin", "confidence": "inferred" },
-        { "label": "Dante subsystem (DOM)", "value": "A second computer, not a chip: Xilinx Zynq-7000, dual Cortex-A9, 512 MB, Micron n25q512a QSPI boot flash, two Cadence GEM MACs for Dante primary/secondary, running its own Linux. From the decompiled `dom.dtb`, `model = \"YAMAHA DOM\"`", "confidence": "verified" },
+        { "label": "Dante subsystem (DOM)", "value": "A second computer, not a chip: Xilinx Zynq-7000, dual Cortex-A9, 512 MB, Micron n25q512a QSPI boot flash, two Cadence GEM MACs for Dante primary/secondary, running its own Linux. From the decompiled `dom.dtb`, `model = \"YAMAHA DOM\"`. The part is **XC7Z020 in the clg484 package** — its three bitstreams are stock `.bit` files, so they carry Vivado's own header naming the part `7z020clg484`, the top-level design `khaju_hc_top`, the toolchain `2019.2` and a build date of 2025/07/18, the three SRC variants differing only by build minute. That is the same device as the [SQ-5](/platforms/allen-heath-sq5/) mixes on, doing an entirely different job", "confidence": "verified" },
         { "label": "Dante bridge fabric", "value": "A custom Yamaha FPGA IP block in the DOM's programmable logic, `compatible = \"xlnx,akashi\"` at `0x60000000`, with interrupts named `ts`/`rx`/`tx`/`rxerr`/`smi` and `rx_act`/`meter`/`rx_ka`/`daif`. Three shipped bitstream variants (`noSRC`, `syncSRC`, `asyncSRC`) select the sample-rate-conversion mode", "confidence": "verified" },
         { "label": "Microcontrollers", "value": "Seven ARM Cortex-M images — JK (AES I/O), P-U2S2, P-MD2, P-HR1, P-FDC2 (panel boards), PY-MIDI-GPI (slot card) and USB2HOST — each identified from its vector table. Two SRAM bases appear (`0x2000_0000` and `0x1000_0000`), so at least two MCU families are in use. USB2HOST is filed as `DSP_V105.bin` but is a 3.8 MB Cortex-M image, not DSP code", "confidence": "verified" },
         { "label": "Ethernet switch", "value": "Marvell 88E6352 managed switch, configured from userspace — the application names `88E6352 PORT#0`, `PORT#5` and `PORT#6`, so at least three ports are software-visible", "confidence": "verified" },
@@ -231,7 +232,7 @@
 
     {
       "id": "allen-heath-sq5",
-      "updated": "2026-08-07",
+      "updated": "2026-08-14",
       "manufacturer": "Allen & Heath",
       "model": "SQ-5",
       "family": "SQ series",
@@ -239,11 +240,13 @@
       "introduced": 2018,
       "status": "documented",
       "tags": ["FPGA mixing", "Zynq-7000", "Bare metal", "AMP", "No signing"],
-      "summary": "A 55 MB firmware image that contains none of the mixer. The entire audio path lives in FPGA fabric behind an undocumented AXI register map.",
-      "headline": "The update package is 55 MB of ARM image and 2.5 MB of bitstream — and the 2.5 MB is the mixer. Most of the 55 MB is uncompressed UI artwork.",
-      "method": "Static analysis of a single vendor firmware update file. No hardware was inspected. The firmware image was not retained, so the analysis currently cannot be re-derived without obtaining it again.",
+      "summary": "A 55 MB firmware image that contains none of the mixer. The audio path lives in FPGA fabric behind an undocumented AXI register map — and the fabric has now been opened far enough to read a pan-law table out of it.",
+      "headline": "The update package is 55 MB of ARM image and 2.5 MB of bitstream, and the 2.5 MB is the mixer. What looked like 40 MB of UI artwork also turned out to hold **two more complete FPGA bitstreams**, and the mixer's own fabric has given up the first data recovered from inside this console: a constant-power crossfade table, decoded twice by independent paths to the same bits.",
+      "method": "Static analysis of a single vendor firmware update file, extended into the FPGA fabric itself. No hardware was inspected and nothing here was run on a console. The image was re-obtained in August 2026 and the container format re-verified against it, so every claim below is now re-derivable — an earlier version of this page recorded the image as lost. The fabric work goes bitstream → FASM → netlist → simulator, using Project X-Ray's bit-to-feature database and `fasm2bels`; the parts of that route which touch this console were run end to end, and the general route is described on the [method](/method/) page.",
       "artifacts": [
-        "`SQ-5UPG_1_6_3r6268.bin` — three records, no compression, no encryption"
+        "`SQ-5UPG_1_6_3r6268.bin` — three records, no compression, no encryption",
+        "`SQuMixFPGA.bit` — the 2.5 MB mixer bitstream, carved from the package: byte-swapped for the Zynq PCAP path and Vivado-compressed",
+        "Two Artix-7 bitstreams carved out of the region this page used to call artwork — the device-side images the console pushes to its remote I/O boxes"
       ],
       "hardware": [
         { "label": "SoC", "value": "Xilinx Zynq-7000 XC7Z020 — proven from the bitstream's IDCODE configuration packet (30018001 → 03727093), not inferred", "confidence": "verified" },
@@ -252,7 +255,15 @@
         { "label": "DRAM", "value": "≥1 GB — inferred from CPU1's 0x20100000 load address (513 MB in) against the Zynq-7000 PS ceiling of 1 GB. No memory-controller config was decoded", "confidence": "inferred" },
         { "label": "Boot flash", "value": "Dual-parallel QSPI NOR, ~64 MB (`InitQspi2Dual`). Dual-parallel means two devices striped — a naive single-chip dump gets every other byte", "confidence": "verified" },
         { "label": "Surface MCU", "value": "A fader/surface MCU flashed over SPI from the ARM (`Expected Fader Version %u.%u, updating...`)", "confidence": "verified" },
-        { "label": "FX board", "value": "Separate board with its own DSPs and SDRAM (`FX board ID 0x%02X not recognised`, `FX[0] failed SDRAM test`)", "confidence": "verified" }
+        { "label": "FX board", "value": "Separate board with its own DSPs and SDRAM (`FX board ID 0x%02X not recognised`, `FX[0] failed SDRAM test`)", "confidence": "verified" },
+        { "label": "Mixer bitstream — it is compressed", "value": "`SQuMixFPGA.bit` uses Vivado bitstream compression: **6,021 configured frames written by `FDRI`, plus 4,024 frames filled by `MFWR`** multi-frame writes. This matters more than it sounds, because the standard open-source frame reader parses `MFWR` into a named packet and then discards it — so a compressed bitstream does not error, it yields a frame set with frames missing or duplicated, and that corruption stays structured all the way through FASM into a netlist that still simulates. Expanding the compression correctly is the first gate on any fabric work here", "confidence": "verified" },
+        { "label": "Mixer fabric — frames placed", "value": "**5,935 mixer logic frames placed at absolute device addresses.** Compressed bursts auto-increment through the device's own frame ordering rather than through consecutive addresses, so placement needs the part's geometry, not arithmetic. Two independent placement paths were run against each other and initially disagreed on **1 frame in 124** — the cause was the single `MFWR` immediately after a `CMD=MFW`, which has no address of its own because it primes the mode; applied as a frame write it overwrites one real frame silently. Verification also has to account for **2 pad frames after each block-type/half/row group**, twelve in total on this part", "confidence": "verified" },
+        { "label": "Mixer fabric — first data recovered from inside it", "value": "Exactly **two initialised block-RAM halves** are configured in the whole mixer design, and their contents decode to a **crossfade / pan-law table pair**: a symmetric sine-shaped bell rising 0→31→0 across 49 points, and its complement falling 61→32→61, the two summing to roughly a constant — which is what a constant-power pan law looks like — alongside higher-entropy coefficient lines. The validation is that the two halves decode **bit-identically from different base addresses and word offsets**: two independent paths through the geometry cannot agree by accident. This is the first data recovered from inside this console's fabric rather than from the software around it", "confidence": "verified" },
+        { "label": "Remote-I/O bitstreams — hiding in the artwork", "value": "The ~40 MB region this page described as uncompressed artwork is not all artwork: it embeds **two complete Artix-7 bitstreams**, both plaintext, carved out and identified as **XC7A15T** (`0x0362E093`). They are the device-side images the console pushes down its SLink/gigaACE port to a remote I/O box, so they are the *far end* of the link, not fabric inside the console. They are two different designs and not one design compressed twice: one is uncompressed with no SPI-boot configuration, the other sets the boot-SPI registers and carries initialised memory", "confidence": "verified" },
+        { "label": "One of those images is shipped by three consoles", "value": "The smaller of the two is **byte-identical** — same SHA-256 over all 1,154,836 bytes of configuration data — to a bitstream embedded in the [Qu-7](/platforms/allen-heath-qu/) and [Avantis](/platforms/allen-heath-avantis/) update packages. Allen & Heath ship one common remote-I/O device image across three product lines a decade and two platform generations apart, which is a stronger statement of shared architecture than any string match on this site", "confidence": "verified" },
+        { "label": "Remote-I/O fabric — recovered and simulated", "value": "That bitstream was taken all the way back to a netlist and elaborated in a simulator without error: **4,206 6-input LUTs, 3,625 flip-flops, 12 block RAMs, 3 clock managers**. It went further than the mixer could because it is roughly twenty times smaller and has no processor system to model. The design partitions cleanly by clock domain into a **240 MHz audio datapath** — 2,427 elements, heavy on shift-register primitives, almost no feedback — and a **180 MHz protocol engine** which is 30% of the flip-flops but **103 of the design's 159 state machines**", "confidence": "verified" },
+        { "label": "Remote-I/O fabric — the PHY, and why it matters here", "value": "The link PHY is **LVDS SelectIO with source-synchronous SERDES** — 107 input serialisers, 29 output serialisers, 65 delay elements and **zero gigabit transceivers**. Corroborated independently by the clocking: all three clock managers run a 900 MHz internal frequency from three *different* input clocks (50, 36 and 28.125 MHz), and one produces a 180 MHz pair 90° apart, which is a source-synchronous capture clock and nothing else. This is load-bearing for the question of whether the console could speak the far end's protocol, because SelectIO is ordinary I/O that the console's own XC7Z020 has — its clg400 package has no gigabit transceivers at all, so a transceiver-based PHY would have ended the question", "confidence": "verified" },
+        { "label": "Remote-I/O fabric — where the audio crosses", "value": "All twelve block RAMs are simplex buffers, written on one port and read on the other, never both. Four are 16-bit × 2048 control buffers; **eight are 24 bits wide**, which is the console's sample width stated by the fabric rather than by a specification. Four of the twelve are **asynchronous** — written on one clock and read on another, in both directions across the 180/240 MHz boundary — and those four are the clock-domain-crossing FIFOs where link audio enters and leaves", "confidence": "verified" }
       ],
       "software": [
         { "label": "Operating system", "value": "None. Zero FreeRTOS, ThreadX or Linux strings — a bare-metal Xilinx standalone BSP with a custom message-block system and a custom GUI", "confidence": "verified" },
@@ -273,7 +284,7 @@
       "programmable": [
         { "rank": 1, "item": "Interoperability, not rehosting", "note": "The SLink slot takes gigaACE, Dante and Waves cards, and Allen & Heath publish the SQ MIDI/TCP control protocol. Almost anything that motivated looking at the firmware in the first place is better served here, and none of it needs reverse engineering." },
         { "rank": 2, "item": "The AXI register map — the one thing genuinely worth reversing", "note": "Map the PS↔PL interface and the black box becomes documented hardware: you could drive the stock mixing engine from your own software, which is a far better position than replacing either half. It is also reachable non-destructively, with the stock bitstream loaded and nothing written to flash." },
-        { "rank": 3, "item": "The PL bitstream", "note": "Unencrypted, and Project X-Ray covers Artix-7 and Zynq-7 fabric, so it is analysable in principle. In practice it is a very large project and it is downstream of understanding the register map anyway. Not step one." },
+        { "rank": 3, "item": "The PL bitstream", "note": "No longer \"in principle\" — the compression has been expanded, 5,935 frames placed, and the initialised memory decoded to a pan-law table. But the ceiling is real and it is specific: the open-source bitstream-to-netlist path **does not support the DSP48 arithmetic primitive**, which on a mixing engine is the part you actually want. You can recover the memories, the logic and the interface around the arithmetic, and not the arithmetic. That makes the bitstream a good route to the register map and a poor route to the algorithms, which is the reverse of what it looks like from outside." },
         { "rank": 4, "item": "Linux on the PS", "note": "Entirely feasible and almost pointless on its own — it gets you Linux wired to a black box you cannot command. Worth doing only as a means of probing the AXI map." }
       ],
       "verdict": "A poor rehosting target, but not for the usual reasons. There is no secure boot and no signing — yet none of the mixer is in the software you would replace. If it were ever pursued, the correct first move is JTAG, not the USB update path: dump the 64 MB QSPI intact before writing anything.",
@@ -281,18 +292,24 @@
         "The PL's AXI register map is entirely undocumented — this is the whole audio path, and it is the single most important missing piece.",
         "The FX board's DSPs are a genuine gap: not the vendor, not the architecture, not how code reaches them. The `FX[0]` indexing implies more than one.",
         "The first-stage bootloader is not in the update file and has never been seen. The A/B banks protect the application images, not it.",
-        "The debug UART is near-certainly populated (xuartps is linked and printf diagnostics are everywhere) but has never been located on a board."
+        "The debug UART is near-certainly populated (xuartps is linked and printf diagnostics are everywhere) but has never been located on a board.",
+        "What the rest of the mixer's memory holds. Only two block-RAM halves are *initialised* at configuration time and those are the ones read out; every table the console writes at runtime — every fader law, every filter coefficient it computes — is invisible to a static bitstream read by construction.",
+        "Whether the recovered remote-I/O netlist actually behaves. It elaborates in a simulator, which proves it is structurally coherent, not that it is functionally faithful; nothing has been driven through it and no output has been compared against a real device.",
+        "The arithmetic. The bitstream-to-netlist route has no support for the DSP48 primitive, so the mixer's multiply-accumulate structure — the actual mixing — cannot be recovered by this path at all. Nothing short of a different toolchain or a live bus capture changes that."
       ],
       "traps": [
         "A parser assuming a 0x24 or 0x40 container header parses record 0 plausibly and then lands mid-payload in 55 MB of ARM code and artwork.",
         "The correct load mapping for the host image is VA = file offset + 0x103DD0, pinned empirically from the GUI string-pointer table — not the 0x100000 the container header implies.",
-        "GUI strings are reached through a master string-pointer table indexed by string ID, so they have no direct LDR-literal cross-reference. Only BSP and system strings are loaded directly."
+        "GUI strings are reached through a master string-pointer table indexed by string ID, so they have no direct LDR-literal cross-reference. Only BSP and system strings are loaded directly.",
+        "**Bitstream compression fails silently, not loudly.** The standard frame reader decodes the multi-frame-write packet into a named object and then drops it. Feed it a compressed bitstream and you get no error and no warning — you get a frame set that is quietly wrong, and it stays plausible through every downstream stage. Check for those packets before trusting anything built on the frames.",
+        "**Carved filenames are a guess, and these ones were wrong.** The two remote-I/O bitstreams were carved and named for a part that the die measurement and the IDCODE then contradicted. A filename you invented during extraction is not evidence, and it will be quoted back at you three documents later.",
+        "**\"Twenty block RAMs in two columns\" was an artefact of the decode, not a finding.** An early pass matched initialised memory by shared column base address and reported ten times too many, because roughly ten tiles stack per column and differ only by word offset. Each tile's own word window has to be checked. The corrected answer is two."
       ]
     },
 
     {
       "id": "allen-heath-avantis",
-      "updated": "2026-08-08",
+      "updated": "2026-08-14",
       "manufacturer": "Allen & Heath",
       "model": "Avantis",
       "family": "dLive lineage (XCVI core)",
@@ -301,7 +318,7 @@
       "status": "documented",
       "tags": ["x86 control host", "Xilinx FPGA DSP", "Linux", "MD5-only updates", "No signing"],
       "summary": "The structural inverse of the SQ: the control plane is a commodity x86 Linux box, and the mixing runs on a subordinate Xilinx FPGA the host programs at boot. OS updates carry integrity checksums but no signature.",
-      "headline": "The V2.01 package is an x86-64 Qt application on a Tiny-Core-derived Linux, plus microcontroller and FX images — the mix FPGA's bitstream isn't even a file in it, and the whole update validates on MD5 alone.",
+      "headline": "The V2.01 package is an x86-64 Qt application on a Tiny-Core-derived Linux, and the whole update validates on MD5 alone. The mix FPGA's bitstream is not a file in it because it is **inside the `Console` binary** — six bitstreams are, and each names its own device: two **XC7K160T** for the mix engine, two **XC7Z010** for FX, and two Artix-7 device images for the remote I/O.",
       "method": "Static analysis of the V2.01 update package: the unstripped `Updater`, the stripped `Console` Qt binary and the plaintext OS scripts (`detect_sbc.sh`, `set_ssh.sh`, `PartitionCheck.sh`). No hardware inspected.",
       "artifacts": [
         "`AllenHeath-Avantis-V2.01.zip` — Console V2.01 (rev 97241), OS V1.32; covers both Avantis and Avantis Solo",
@@ -310,8 +327,10 @@
       ],
       "hardware": [
         { "label": "Control plane", "value": "An x86-64 single-board computer running Linux — the UI/control host only, not the mixer. `detect_sbc.sh` enumerates the shipped boards by CPU: Kontron D3543/D3544 (Gemini Lake J5005/J4005), Advantech AIMB-218 (Elkhart Lake N6211/J6413) and Kontron K3921-H (Alder Lake-N i3-N305 / N97). The console has migrated SBCs across its production life", "confidence": "verified" },
-        { "label": "Audio engine", "value": "A Xilinx FPGA, not the x86 host. `Console` carries the host-side stack — `FPGALoader`, `FPGAMixer`, `FPGAInputProc`, `FPGAMixProc`, `MixRackFPGAProgramming` — with Xilinx boot strings (`FSBL`, `Bitstream not loaded into PL`, `BITSTREAM_DOWNLOAD_FAIL`): a Zynq-class part in A&H's XCVI lineage that the host programs at boot", "confidence": "verified" },
-        { "label": "FX DSP", "value": "A separate FDSP/UltraFX effects FPGA driven over an SPI→AXI bridge (`FDSPFxV2SPIToAXIController`, `FDSP Ultra Fx FPGA loader and Programming failed`)", "confidence": "verified" },
+        { "label": "Audio engine", "value": "A Xilinx FPGA, not the x86 host. `Console` carries the host-side stack — `FPGALoader`, `FPGAMixer`, `FPGAInputProc`, `FPGAMixProc`, `MixRackFPGAProgramming` — with Xilinx boot strings (`FSBL`, `Bitstream not loaded into PL`, `BITSTREAM_DOWNLOAD_FAIL`): a part in A&H's XCVI lineage that the host programs at boot", "confidence": "verified" },
+        { "label": "Mix FPGA — a Kintex-7 pair", "value": "**Two × XC7K160T** (`0x0364C093`), 16,560 configured frames each. This is the largest fabric on any Allen & Heath platform documented here and it is a genuine surprise: the SQ mixes in the PL of a single XC7Z020, and the Avantis — the bigger console — does it in a *pair* of Kintex-7 parts with no PS at all, driven by the x86 host over `/dev/ah_audio` rather than by an on-chip ARM. Read from the IDCODE configuration packet of each bitstream", "confidence": "verified" },
+        { "label": "FX DSP", "value": "A separate FDSP/UltraFX effects FPGA driven over an SPI→AXI bridge (`FDSPFxV2SPIToAXIController`, `FDSP Ultra Fx FPGA loader and Programming failed`). The two FX images are for **XC7Z010** (`0x03722093`) — Zynq-7010, so \"FX FPGA\" is really a pair of small Zynq SoCs, which is what the Qu's `Both FX Zynqs booted` says out loud", "confidence": "verified" },
+        { "label": "Remote-I/O device images", "value": "Two Artix-7 bitstreams — **XC7A15T** (`0x0362E093`) and **XC7A35T** (`0x0362D093`) — are the device-side images the console pushes down the SLink/gigaACE port to its I/O boxes, not fabric inside the console. The XC7A15T one is **byte-identical** to the image in the SQ-5 and Qu-7 packages; see the [SQ-5](/platforms/allen-heath-sq5/) entry", "confidence": "verified" },
         { "label": "Host ↔ engine interface", "value": "Custom kernel character devices — `/dev/ah_audio`, `/dev/ah_surface`, `/dev/ah_motor_left`, `/dev/ah_motor_right` — form the x86↔FPGA/surface boundary; the Avantis analogue of the SQ's on-chip PS↔PL AXI bridge", "confidence": "verified" },
         { "label": "Surface / I/O controllers", "value": "Motor-fader, user-control and main-board MCUs (with bootloaders) plus IP port-controllers (IP1/IP4/IP6/IP8/IPG8, all V1.44) are flashed from the host", "confidence": "verified" },
         { "label": "Storage / boot", "value": "Ordinary PC storage: GRUB on `/dev/sda`, with root, a ~20 GB audio-files partition and swap created at runtime (`PartitionCheck.sh`). No A/B multiboot — a normal Linux boot, unlike the SQ's Zynq multiboot banks", "confidence": "verified" }
@@ -334,8 +353,8 @@
       ],
       "verdict": "The structural inverse of the SQ. Where the SQ hid a whole console inside one bare-metal Zynq, the Avantis splits the job: an open, SSH-able x86 Linux control plane over a Xilinx FPGA audio engine it programs at boot. Nothing on the control side is protected — updates ride on MD5, SSH is a USB flag away — yet the parts worth having, the FPGA engine and the host↔PL interface, are exactly the parts the update package does not hand you.",
       "openQuestions": [
-        "Where the mix-FPGA bitstream lives — it is not a standalone file in the package, so it is embedded in `Console` or carried inside `dCorefocal64.gz` and loaded by the host at boot.",
-        "The exact Zynq/XCVI part and the layout of the SPI→AXI register interface — the whole audio path sits behind `/dev/ah_audio` and is undocumented.",
+        "The layout of the SPI→AXI register interface. The parts are now named and the bitstreams located, but the whole audio path still sits behind `/dev/ah_audio` and no register is documented — the same black box the SQ-5 has, and the one thing worth reversing here.",
+        "Which of the six embedded bitstreams drives which board. The device each is *for* is stated by its own IDCODE packet; the board each lands on is an inference from size and from the FX and SLink strings around it. Nothing was disassembled and no bitstream was traced to a `FPGALoader` call site.",
         "Whether the `RSA_*` strings mean anything is enabled, or are dormant Xilinx boot-flow capability."
       ],
       "traps": [
@@ -347,7 +366,7 @@
 
     {
       "id": "allen-heath-qu",
-      "updated": "2026-08-08",
+      "updated": "2026-08-14",
       "manufacturer": "Allen & Heath",
       "model": "Qu-5 / Qu-6 / Qu-7",
       "family": "Qu 2nd-gen — SQ platform lineage",
@@ -355,8 +374,8 @@
       "introduced": 2024,
       "status": "documented",
       "tags": ["Zynq PS + discrete FPGA", "Bare metal", "SQ-derived", "FDSP FX V2", "No signing"],
-      "summary": "The 2nd-generation Qu is SQ silicon in a Qu suit: a bare-metal Xilinx Zynq boots and configures discrete 7-series FPGAs for the audio path, sharing the SQ's boot BSP and the Avantis's FX subsystem.",
-      "headline": "The 65 MB Qu-7 update is one unencrypted Xilinx boot image carrying six PL bitstreams, with the SQ's exact boot BSP and the same FDSP FX V2 as the Avantis. The second-generation Qu is the SQ platform rebadged, not the 2014 Qu-16/24/32.",
+      "summary": "The 2nd-generation Qu is SQ silicon in a Qu suit, and not by analogy — it is the same Zynq part, running a mix bitstream of the same size, with the SQ's boot BSP and the Avantis's FX subsystem.",
+      "headline": "The 65 MB Qu-7 update is one unencrypted Xilinx boot image carrying six PL bitstreams, and the one that mixes is for an **XC7Z020 — the SQ-5's exact part**, at 6,503 configured frames against the SQ's 6,021. \"SQ silicon in a Qu suit\" started as a read of shared strings; the bitstreams state it outright.",
       "method": "Static analysis of the Qu-7 V1.1.3 (r3931) update .bin and the bundled Qu-5/6/7 update-instructions PDF. No hardware inspected; no bitstream disassembled. The classic Qu-16/24/32 is a separate earlier platform and is not covered.",
       "artifacts": [
         "`Qu-7UPG_1_1_3_r3931.bin` — 65 MB, a single Xilinx Zynq boot image (`XLNX` header, encryption status 0)",
@@ -365,7 +384,7 @@
       ],
       "hardware": [
         { "label": "SoC / boot", "value": "A Xilinx Zynq PS (ARM) — boot header `AA995566`/`XLNX` with encryption status 0, `Xilinx First Stage Boot Loader`, `PS7 initialization successful`, and the Zynq PS-driver BSP (`xemacps`, `xscugic`, `xdevcfg`, `xqspips`, `xiicps`, `xttcps`, `xuartps`, lwIP 2.0.3 xilinx_modified) — the identical BSP to the SQ", "confidence": "verified" },
-        { "label": "Audio / FX fabric", "value": "Discrete 7-series FPGA, not the Zynq PL: the image carries six PL bitstreams and the only device IDCODE present is `0x0362e093` (Artix-class, XC7A15T/35T die), with no Zynq-7000 device code anywhere — the Zynq boots and configures the fabric", "confidence": "verified" },
+        { "label": "Audio / FX fabric", "value": "**Both the Zynq PL and discrete fabric — this page recorded \"no Zynq PL\" until 2026-08-14 and that was wrong.** Three of the image's bitstreams state their target device outright: the Zynq's own PL is **XC7Z020** (`0x03727093`, at file offset `0x1730`, 6,503 configured frames), a second **XC7Z010** (`0x03722093`) is the FX Zynq, and one discrete **XC7A15T** (`0x0362E093`) is the remote-I/O device image. The Zynq PL was read as empty because its bitstream is byte-reversed per 32-bit word for the PCAP boot path, so a normal-order search for the sync word cannot see it", "confidence": "verified" },
         { "label": "FX subsystem", "value": "A dual-core FDSP FX V2 (`FDSPFxV2SystemCore0/1`, `Both FX Zynqs booted`) — the same FX subsystem as the Avantis, down to identical `Bitstream CRC: 0x8948 / 0xE489`", "confidence": "verified" },
         { "label": "PS cores", "value": "AMP across the two PS cores, not SMP (`CPU1: clearing flag for CPU0`, a `START_SYNC` shared region, `Handoff Address (Core0/1)`) — the SQ's AMP model", "confidence": "verified" },
         { "label": "Storage", "value": "QSPI NOR boot (`Boot mode is QSPI`, `xqspips`) plus eMMC for scenes and libraries (`… EMMC ERROR`); USB recording under `/AH_QU/USBRec`", "confidence": "verified" },
@@ -389,12 +408,12 @@
       "verdict": "The second-generation Qu is not a descendant of the 2014 Qu-16/24/32 — it is the SQ platform in a cheaper suit: the same bare-metal Zynq, the same PS-driver BSP, the same FDSP FX V2 as the Avantis. Anything already learned from the SQ's platform carries straight over; the classic Qu is the genuinely separate, still-undocumented target.",
       "openQuestions": [
         "The classic Qu-16/24/32/Pac/SB (2014) is a separate, earlier platform — NXP Cortex-M + Blackfin + FPGA, bare-metal, no add-ons — documented in its own entry; the two Qu generations share only the brand.",
-        "The exact Zynq PS part is not pinned: no Zynq device IDCODE appears in the image; only the discrete FPGA's `0x0362e093` was decodable.",
+        "Which of the six bitstreams is which. Three state a device (XC7Z020, XC7Z010, XC7A15T); the remaining three were not attributed to a board, and no bitstream was disassembled — so \"the XC7Z020 image is the mixer\" rests on its size and on the SQ parallel, not on anything read out of the fabric.",
         "The Qu Dante-16 option card (`QUDante16.q16`, an Audinate module image) was not analysed."
       ],
       "traps": [
         "The 2nd-gen Qu (Qu-5/6/7) and the classic Qu-16/24/32 share a name and, on this evidence, nothing else — do not carry a finding from this image back to a 2014 Qu.",
-        "`FSBL` / `PS7 init` prove a Zynq PS, but the absence of any Zynq device IDCODE means the configured fabric is discrete 7-series FPGA — don't read 'Zynq' here as 'mixing in the Zynq PL' the way the SQ does.",
+        "**Concluding \"no Zynq PL\" from the absence of a Zynq IDCODE — this page did exactly that and was wrong for a week.** A bitstream destined for the PCAP boot port is stored byte-reversed per 32-bit word, so it carries `66 55 99 AA` where the documentation says `AA 99 55 66`. Searching one byte order finds the discrete Artix image, misses the Zynq one, and hands you a clean, confident, inverted answer: the fabric that was recorded as absent is the one doing the mixing. Search both orders, and treat \"the IDCODE is missing\" as a claim needing evidence rather than a finding.",
         "The `AES` strings are AES3 audio channels and `EFUSE_SEC_EN` is an FSBL capability check — neither is evidence of a signed or encrypted image. The boot-header encryption status (0) is the authority."
       ]
     },
@@ -1363,7 +1382,7 @@
     },
     {
       "id": "blackmagic-atem",
-      "updated": "2026-08-08",
+      "updated": "2026-08-14",
       "manufacturer": "Blackmagic Design",
       "model": "ATEM (switcher family)",
       "family": "ATEM — Production/Television Studio, Constellation, Mini/SDI",
@@ -1377,8 +1396,8 @@
         "Bare-metal",
         "UDP state-sync"
       ],
-      "summary": "A decade of vision mixers that are all the same idea: a Xilinx FPGA does the video, and a CPU embedded in — or bolted beside — that FPGA runs a bare-metal control stack. The CPU changes generation to generation (PowerPC, then MicroBlaze, then a separate ARM); the FPGA-does-everything shape never does.",
-      "headline": "Every switcher update pairs one Xilinx bitstream (sync word `AA 99 55 66`) with one CPU image, and the CPU's architecture tracks the FPGA it lives in: an ELF marked PowerPC on the first M/E frames (reset vector `0xFFFFFFFC`, a PPC405 hardcore), then Xilinx MicroBlaze — big-endian, then little-endian — then a discrete ARM. The mixer was never a computer with a video card; it was always an FPGA with a CPU inside it.",
+      "summary": "A decade of vision mixers that are all the same idea: a Xilinx FPGA does the video, and a CPU inside that FPGA runs a bare-metal control stack. The CPU changes generation to generation (PowerPC, then MicroBlaze, then ARM) and so does the fabric under it — Virtex-5, Virtex-6, Kintex-7, Zynq — but the FPGA-does-everything shape never does.",
+      "headline": "Every switcher update pairs one Xilinx bitstream (sync word `AA 99 55 66`) with one CPU image, and the bitstream **names the part it is for**: a PPC440 in a Virtex-5 FXT on the first M/E frames, then MicroBlaze in a Virtex-6 and then a Kintex-7, then ARM in a Zynq-7000. The mixer was never a computer with a video card; it was always an FPGA with a CPU inside it — and the CPU was inside it even on the generation this page previously read as a separate ARM.",
       "method": "Static analysis of the macOS ATEM Setup 10.2.1 installer (January 2026). Its `Contents/Resources` holds 43 firmware packages plus per-language sub-packages, each a custom container keyed by the device's USB product ID under Blackmagic's vendor ID `0x1EDB`. The container was reversed from scratch; older payloads decompress to raw images that self-identify, and the published Switchers SDK headers supplied the control-model vocabulary. No hardware was inspected and no encrypted payload was decrypted.",
       "artifacts": [
         "`ATEM Setup.app/Contents/Resources/data-*.bin` — 43 firmware packages, product-ID-keyed (`data-bd48.bin` … `data-bf01.bin`)",
@@ -1394,8 +1413,13 @@
           "confidence": "verified"
         },
         {
+          "label": "FPGA parts — read, not inferred",
+          "value": "Every one of these bitstreams **names its own device**. A Xilinx configuration image writes the target JTAG IDCODE to configuration register `0x0C` before it writes any frame data, so \"a raw `.bin` with no part name in it\" still states its part in a fixed place. Walking the packet stream of all 43 packages gives, per generation: **XC5VFX130T** (`0x03300093`) with the PowerPC; **XC6VLX75T** (`0x04244093`) with MicroBlaze big-endian; **XC7K325T** (`0x03651093`, two models) and **XC7K420T** (`0x03752093`) with MicroBlaze little-endian; **XC7Z010** (`0x03722093`) with the ARM; and **XC7Z015** (`0x0373B093`) on the newest frames, five of which pair it with a second FPGA — **XC7A100T** (`0x03631093`) or **XC7A25T** (`0x037C2093`). Part names resolved against Xilinx UG470 Table 1-1 and UG360 Table 6-13",
+          "confidence": "verified"
+        },
+        {
           "label": "Control CPU — generations",
-          "value": "The switcher CPU is an ELF whose machine field walks the Xilinx roadmap: **PowerPC** on the first 1 M/E and 2 M/E frames (`e_machine 20`, big-endian, entry `0xFFFFFFFC` — a PPC405 hardcore of the Virtex-II Pro / Virtex-4 FX era), then **MicroBlaze big-endian** (Television Studio), then **MicroBlaze little-endian** (Production Studio 4K), then a discrete **ARM** (`e_machine 40`, entry `0x00100000`) on the Broadcast Studio 4K / Constellation frames",
+          "value": "The switcher CPU is an ELF whose machine field walks the Xilinx roadmap: **PowerPC** on the first 1 M/E and 2 M/E frames (`e_machine 20`, big-endian, entry `0xFFFFFFFC`), then **MicroBlaze big-endian** (Television Studio), then **MicroBlaze little-endian** (Production Studio 4K), then **ARM** (`e_machine 40`, entry `0x00100000`) on the Broadcast Studio 4K / Constellation frames. Pairing each ELF with the IDCODE of the bitstream shipped beside it dates the fabric exactly, and corrects two readings this page previously made from the CPU alone: the PowerPC part is **XC5VFX130T**, a Virtex-5 FXT whose hardcore is **PPC440**, not the PPC405 of the Virtex-II Pro / Virtex-4 FX era; and the ARM is not discrete but the **PS of an XC7Z010**, a Zynq-7000 — the same shape as the SQ-5, arrived at from the other direction",
           "confidence": "verified"
         },
         {
@@ -1493,7 +1517,7 @@
       "verdict": "Hardware, consistently and for a decade. The ATEM line is a single architectural idea re-spun across four CPU generations: a Xilinx FPGA carries the entire video path and a CPU that lives inside or beside it — PowerPC hardcore, then MicroBlaze soft core in both endiannesses, then a discrete ARM — runs a bare-metal control stack with its own TCP/IP and mDNS. There is no operating system to speak of and, on the older frames, no firmware protection beyond an integrity digest; the newest models close that with an encrypted image. What makes the family approachable is entirely on the outside: a published SDK over a stable UDP state-sync protocol, so the interesting surface is the network, not the silicon.",
       "openQuestions": [
         "What the encrypted generation actually contains. The construction is visible from the outside (single stored high-entropy stream, not block-aligned); the plaintext was neither recovered nor examined here, so whether the modern frames kept the FPGA-plus-CPU shape or changed it is unconfirmed.",
-        "The exact Xilinx parts. The bitstreams are raw `.bin` with no embedded part name, so the FPGA family per generation is inferred from the CPU core (PPC405 hardcore ⇒ Virtex-II Pro/-4 FX; MicroBlaze ⇒ Spartan/Artix-class) rather than read off.",
+        "The exact Xilinx parts on the **encrypted** generation. The plaintext packages state their device in the bitstream's IDCODE packet and are settled; the ~20 encrypted packages cannot be read at all, so whether the newest frames stayed on Zynq is unconfirmed. The package, speed grade and die revision are not in the IDCODE either — that field names the device, not the ordering part number.",
         "Whether the modern housekeeping MCU is really an 8-bit AVR or an AVR-cored SoC. The vector table is unmistakably AVR; the surrounding board role is a guess.",
         "The wire-protocol command codes. The firmware stores field names in clear text but not the four-character command tags, which are built from a table — so the exact opcodes were taken from the SDK's failure enums, not confirmed against the images.",
         "The USB-PID identities of the ~20 encrypted packages, which cannot self-identify. They were bounded as a set and dated by version number, but each one was not individually tied to a model name."
@@ -1501,6 +1525,7 @@
       "traps": [
         "Reading `data-<pid>.bin` as one blob. It is a chained container with a 32-byte digest in front and multiple compressed images inside; treating the first bytes as a header, or running `file` on it, tells you nothing. The `0xBDBD` block magic sits at offset `0x20`, not `0x00`.",
         "Taking every ATEM for the same chip. The CPU changes generation to generation — a PowerPC ELF on a 2012 frame, a little-endian MicroBlaze on a 4K one, an ARM on a Constellation — and only the Xilinx fabric is the constant. A finding from one image does not carry to the next without checking the machine field.",
+        "**Searching for the sync word in one byte order.** Six of the eleven plaintext bitstreams here are byte-reversed per 32-bit word, because they are loaded through a Zynq's PCAP port rather than presented to the configuration pins: they carry `66 55 99 AA`, not `AA 99 55 66`. A search for the documented sync word alone finds five of eleven and reports the rest as \"no bitstream present\" — which is not a null result, it is a false one. The same trap is what left the [Qu](/platforms/allen-heath-qu/) recorded here for a week as having no Zynq in it.",
         "Assuming the whole line is locked because the newest models are. Most of the packages are plain zlib behind an integrity digest with no signature at all; the encryption is a recent arrival on a minority of models, not a family-wide policy.",
         "Chasing the FPGA. It is the obvious centre of the machine and it is a dead end for anyone who wants to control an ATEM — the bitstream is opaque, and the entire useful surface is the published UDP protocol the switcher already speaks."
       ]
