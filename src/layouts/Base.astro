@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import { strandPhrase } from '../lib/corpus';
 
 interface Props {
   title: string;
@@ -8,12 +9,20 @@ interface Props {
   section?: 'home' | 'platforms' | 'method';
   /** Extra schema.org nodes merged into the page's @graph. */
   schema?: Record<string, unknown>[];
+  /** ISO date this page's content last changed. Feeds the freshness signals. */
+  updated?: string;
 }
 
-const { title, description, section, schema = [] } = Astro.props;
+const { title, description, section, schema = [], updated } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site).href;
 const site = Astro.site!.href.replace(/\/$/, '');
 const year = new Date().getFullYear();
+
+// One card for the whole site rather than one per platform. A generated per-page
+// card would be better and is not worth a rendering pipeline on a site with no
+// build step beyond `astro build`; a missing card is worse than a generic one,
+// because every link to this site was previewing as a bare grey rectangle.
+const ogImage = `${site}/og.png`;
 
 // One @graph per page. A bare array of @type objects is valid JSON and means
 // nothing to every consumer — the @context wrapper is what makes it readable,
@@ -26,6 +35,9 @@ const jsonld = {
       '@id': `${site}/#organization`,
       name: 'Stoatworks Labs',
       url: 'https://stoatworks-labs.com',
+      // sameAs is how a knowledge graph joins this publisher to the same publisher
+      // seen elsewhere. Without it the site is an unattributed island.
+      sameAs: ['https://github.com/stoatworks-labs'],
     },
     {
       '@type': 'WebSite',
@@ -33,9 +45,11 @@ const jsonld = {
       url: `${site}/`,
       name: 'Aux-opsy',
       description:
-        'Independent reverse-engineering research into the hardware and software architecture of live production equipment — digital mixing consoles and video switchers.',
+        'Independent reverse-engineering research into the hardware and software architecture '
+        + `of live production equipment — ${strandPhrase()}.`,
       publisher: { '@id': `${site}/#organization` },
       inLanguage: 'en-GB',
+      license: 'https://aux-opsy.com/method/',
     },
     ...schema,
   ],
@@ -50,12 +64,26 @@ const jsonld = {
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Aux-opsy" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
-    <meta name="twitter:card" content="summary" />
-    <meta name="robots" content="index, follow" />
+    <meta property="og:image" content={ogImage} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:locale" content="en_GB" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content={ogImage} />
+    {updated && <meta name="last-modified" content={updated} />}
+    {/* max-snippet:-1 and max-image-preview:large opt out of the short-snippet
+        default. This is reference material — a truncated snippet is a snippet with
+        the confidence label cut off it. */}
+    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="application/atom+xml" title="Aux-opsy — platform teardowns" href="/updates.xml" />
+    {/* Advertised in the head as well as in llms.txt: an agent that has already
+        fetched a page should not have to guess that a JSON view exists. */}
+    <link rel="alternate" type="application/json" title="Aux-opsy platform dataset" href="/api/platforms.json" />
     <script type="application/ld+json" set:html={JSON.stringify(jsonld)} />
   </head>
   <body>
@@ -81,7 +109,7 @@ const jsonld = {
         <div>
           <strong>Aux-opsy</strong>
           Independent research into the architecture of live production hardware —
-          consoles and video switchers. Documentation only.
+          {' '}{strandPhrase()}. Documentation only.
         </div>
         <div>
           <strong>Before you cite anything here</strong>

@@ -287,6 +287,9 @@ hr { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
   white-space: nowrap;
   cursor: help;
 }
+/* `measured` outranks `verified` and is the only tier that required owning the
+   hardware, so it is the only filled marker — the others are outlines. */
+.conf-measured { color: var(--paper); background: var(--ok); border-color: var(--ok); }
 .conf-verified { color: var(--ok); }
 .conf-inferred { color: var(--warn); }
 .conf-unknown  { color: var(--alert); }
@@ -317,6 +320,20 @@ td.k { white-space: nowrap; font-weight: 560; width: 1%; }
 .card .mfr { font-family: var(--font-mono); font-size: .76rem; color: var(--ink-3); letter-spacing: .05em; text-transform: uppercase; }
 .card p { margin: .4rem 0 .8rem; color: var(--ink-2); font-size: .93rem; }
 .card-meta { display: flex; align-items: center; gap: .75rem 1.25rem; flex-wrap: wrap; }
+
+/* Provenance line under a platform's title: what hardware was involved, and when
+   the entry last moved. Sits on the navy band, so it takes the band's ink. */
+.entry-meta {
+  margin: 1.25rem 0 0;
+  font-size: .88rem;
+  color: var(--band-ink-2);
+  max-width: 78ch;
+}
+.entry-meta strong { color: var(--band-ink); font-weight: 600; }
+
+.related { list-style: none; padding: 0; }
+.related li { padding: .4rem 0; border-bottom: 1px solid var(--line); }
+.related li:last-child { border-bottom: 0; }
 
 /* ---------- controls ---------- */
 

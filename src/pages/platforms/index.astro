@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import data from '../../data/platforms.json';
+import { strandPhrase } from '../../lib/corpus';
 
 const { platforms, statuses } = data;
 
@@ -18,22 +19,107 @@ const rows = platforms.map((p) => ({
 }));
 
 const classes = [...new Set(platforms.map((p) => p.class))].sort();
+
+const site = Astro.site.href.replace(/\/$/, '');
+const lastUpdated = platforms.map((p) => p.updated).filter(Boolean).sort().reverse()[0];
+
+// Dataset + ItemList, not just a WebPage. This index IS a dataset — 22 platforms
+// with a fixed field schema and a published vocabulary — and saying so is what puts
+// it in front of the crawlers that look for structured research rather than prose.
+// `distribution` points at the JSON so a consumer never has to scrape the cards.
+const schema = [
+  {
+    '@type': 'Dataset',
+    '@id': `${site}/platforms/#dataset`,
+    name: 'Aux-opsy platform dataset',
+    description:
+      'Reverse-engineering findings on live production hardware — digital mixing '
+      + 'consoles, video switchers and video-over-IP converters. Records the real '
+      + 'silicon, the operating system or absence of one, the firmware container and '
+      + 'update validation model, and what remains unknown. Every finding carries one '
+      + 'of five confidence labels.',
+    url: `${site}/platforms/`,
+    isPartOf: { '@id': `${site}/#website` },
+    creator: { '@id': `${site}/#organization` },
+    publisher: { '@id': `${site}/#organization` },
+    inLanguage: 'en-GB',
+    isAccessibleForFree: true,
+    dateModified: lastUpdated,
+    keywords: [
+      'reverse engineering',
+      'digital mixing console',
+      'video switcher',
+      'NDI',
+      'firmware analysis',
+      'FPGA',
+      'embedded systems',
+      ...classes,
+      ...new Set(platforms.map((p) => p.manufacturer)),
+    ],
+    variableMeasured: [
+      'Hardware architecture',
+      'Software architecture',
+      'Update path and security model',
+      'What is programmable',
+      'Confidence label',
+    ],
+    distribution: [
+      {
+        '@type': 'DataDownload',
+        encodingFormat: 'application/json',
+        contentUrl: `${site}/api/platforms.json`,
+      },
+      {
+        '@type': 'DataDownload',
+        encodingFormat: 'text/plain',
+        contentUrl: `${site}/llms-full.txt`,
+      },
+    ],
+  },
+  {
+    '@type': 'ItemList',
+    '@id': `${site}/platforms/#list`,
+    numberOfItems: platforms.length,
+    itemListOrder: 'https://schema.org/ItemListUnordered',
+    itemListElement: platforms.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      name: `${p.manufacturer} ${p.model}`,
+      url: `${site}/platforms/${p.id}/`,
+    })),
+  },
+  {
+    '@type': 'BreadcrumbList',
+    '@id': `${site}/platforms/#breadcrumbs`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Aux-opsy', item: `${site}/` },
+      { '@type': 'ListItem', position: 2, name: 'Platforms' },
+    ],
+  },
+];
 ---
 
 <Base
   title="Platform index — Aux-opsy"
-  description="A sortable, searchable index of the live production platforms examined — digital mixing consoles and video switchers: silicon, operating system, processing engine location, firmware container and update security."
+  description={`A sortable, searchable index of the live production platforms examined — ${strandPhrase()}: silicon, operating system, processing engine location, firmware container and update security.`}
   section="platforms"
+  schema={schema}
+  updated={lastUpdated}
 >
   <section class="band">
     <div class="wrap">
       <p class="eyebrow">Index</p>
       <h1>Platform index</h1>
       <p class="lede">
-        {platforms.length} platforms, audio and video. Each entry records where the
+        {platforms.length} platforms — {strandPhrase()}. Each entry records where the
         processing actually happens, what the silicon really is, how firmware is packaged and
         validated, and what remains unknown. Sort, filter and search below; every row on a
         detail page carries its own confidence label.
+      </p>
+      <p style="margin-top:1rem;font-size:.92rem;color:var(--band-ink-2)">
+        Also available as <a href="/api/platforms.json">JSON</a>, as
+        {' '}<a href="/llms-full.txt">plain text with every finding and its label</a>, and as an
+        {' '}<a href="/updates.xml">Atom feed</a>. Last updated {lastUpdated}.
       </p>
     </div>
   </section>
@@ -53,6 +139,7 @@ const classes = [...new Set(platforms.map((p) => p.class))].sort();
           Sort
           <select class="sort" id="sort">
             <option value="status">Research depth</option>
+            <option value="updated">Recently updated</option>
             <option value="manufacturer">Manufacturer A–Z</option>
             <option value="model">Model A–Z</option>
             <option value="year-desc">Year — newest first</option>
@@ -97,6 +184,7 @@ const classes = [...new Set(platforms.map((p) => p.class))].sort();
           data-manufacturer={p.manufacturer}
           data-model={p.model}
           data-year={p.introduced ?? 0}
+          data-updated={p.updated ?? ''}
           data-statusrank={statuses.findIndex((s) => s.id === p.status)}
         >
           <div class="card-head">
@@ -138,6 +226,11 @@ const classes = [...new Set(platforms.map((p) => p.class))].sort();
       collator(a.dataset.manufacturer, b.dataset.manufacturer) ||
       collator(a.dataset.model, b.dataset.model),
     model: (a, b) => collator(a.dataset.model, b.dataset.model),
+    // ISO dates sort correctly as strings, so no Date parsing is needed. Ties fall
+    // back to research depth, which is what you actually want to see first.
+    updated: (a, b) =>
+      collator(b.dataset.updated, a.dataset.updated) ||
+      +a.dataset.statusrank - +b.dataset.statusrank,
     // Year 0 means "no meaningful date" (our own design) — park those last either way.
     'year-desc': (a, b) => (+b.dataset.year || -1) - (+a.dataset.year || -1),
     'year-asc': (a, b) => (+a.dataset.year || 9999) - (+b.dataset.year || 9999),

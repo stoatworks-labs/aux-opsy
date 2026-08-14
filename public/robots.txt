@@ -42,4 +42,46 @@ Content-Signal: search=yes, ai-input=yes, ai-train=yes
 User-agent: CCBot
 Allow: /
 
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Claude-User
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Claude-SearchBot
+Allow: /
+
+# Google-Extended and Applebot-Extended are training controls only — they do not
+# affect crawling or ranking, and they exist ONLY as named groups. Leaving them
+# unnamed is the "unstated" position, which is not the same as granting.
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Google-Extended
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Applebot-Extended
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: meta-externalagent
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: Amazonbot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: DuckAssistBot
+Allow: /
+
+Content-Signal: search=yes, ai-input=yes, ai-train=yes
+User-agent: MistralAI-User
+Allow: /
+
+# Written for machines as well as people. /llms-full.txt carries every finding with
+# its confidence label attached; quoting a finding without its label states something
+# this research does not.
+# https://aux-opsy.com/llms.txt
+# https://aux-opsy.com/llms-full.txt
+# https://aux-opsy.com/api/platforms.json
+
 Sitemap: https://aux-opsy.com/sitemap-index.xml

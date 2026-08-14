@@ -1,5 +1,9 @@
 {
   "confidence": {
+    "measured": {
+      "label": "Measured",
+      "note": "Read off a running unit we own, on our own bench — a number from a live device rather than from a file. It outranks Verified because it is the only label that cannot be produced by static analysis alone, and it appears on the small number of platforms where hardware was actually in our hands."
+    },
     "verified": {
       "label": "Verified",
       "note": "Read directly from an artifact — a constant in a disassembly, a literal in a script, a symbol in a table, a part number in a service manual. Not dependent on interpretation."
@@ -29,6 +33,7 @@
   "platforms": [
     {
       "id": "yamaha-ql1",
+      "updated": "2026-08-07",
       "manufacturer": "Yamaha",
       "model": "QL1",
       "family": "QL series (CL/QL, codename \"Lime\")",
@@ -92,15 +97,16 @@
 
     {
       "id": "yamaha-dm3",
+      "updated": "2026-08-14",
       "manufacturer": "Yamaha",
       "model": "DM3",
       "family": "DM series",
       "class": "Digital mixing console",
       "introduced": 2023,
       "status": "partial",
-      "tags": ["Linux", "Named-component archive", "Dante", "FPGA", "Loadable DSP"],
-      "summary": "Nine years newer than the QL and sharing almost nothing with it but the parameter framework — including, crucially, the same DSP philosophy.",
-      "headline": "The update package is a named-component archive (`#YAMAHA MBDFArchive`) carrying a full Linux rootfs, and the installer is a plain bash script with no checksum ceremony and no signature. Unlike the QL, the DSP arrives as a loadable 3.8 MB image.",
+      "tags": ["Linux", "Named-component archive", "Dante", "FPGA", "Register-configured DSP"],
+      "summary": "Nine years newer than the QL and sharing almost nothing with it but the parameter framework — and, crucially, the same DSP philosophy: the signal path is fixed-function on both, however different the host looks.",
+      "headline": "The update package is a named-component archive (`#YAMAHA MBDFArchive`) carrying a full Linux rootfs, and the installer is a plain bash script with no checksum ceremony and no signature. The 3.8 MB component filed under `DSP/` looks like a loadable DSP image and is not one \u2014 it is **supervisor MCU firmware plus coefficient tables**, so the audio silicon is register-configured exactly as on the QL.",
       "method": "Static analysis of the V3.00 firmware package (167 MB) and the macOS DM3 Editor. Nothing has been tested on hardware.",
       "artifacts": [
         "`DM3_firmware_V3.00.bin` — 167 MB, eleven named components",
@@ -109,36 +115,123 @@
       "hardware": [
         { "label": "Application processor", "value": "Runs a Linux userland — component 1 is an 88 MB rootfs tarball", "confidence": "verified" },
         { "label": "FPGA", "value": "Present — component 3, `fab_V110.bin`, 539 KB inflated", "confidence": "verified" },
-        { "label": "DSP", "value": "Present as a loadable image — component 4, `DSP_V121.bin`, 3.80 MB inflated", "confidence": "verified" },
+        { "label": "DSP", "value": "**Not a loadable DSP image, despite the filename.** Component 4, `DSP_V121.bin`, 3.80 MB inflated, is several **Cortex-M** images plus coefficient and curve tables: the first word is `0x200081B8`, a Cortex-M initial stack pointer, and the code is Thumb-2 throughout. Real content is \u2248 1.3 MB of the 3.8 MB partition, the rest zero padding. The data region fails the same code test used on the QL \u2014 monotonic non-decreasing runs of 10,235 / 4,097 / 4,096 words against 7 for known DSP code \u2014 and contains a literal descending ASCII ramp, i.e. a lookup curve. `dsp_initPowerOnBootAll` boots the MCUs; the audio silicon behind them is register-configured", "confidence": "verified" },
         { "label": "Panel MCU", "value": "Component 2, `DM3PN_V100.bin`, 246 KB inflated", "confidence": "verified" },
         { "label": "Audio networking", "value": "Audinate Brooklyn 3 plus a Broadway module — components 5 and 6", "confidence": "verified" }
       ],
       "software": [
-        { "label": "Container format", "value": "`#YAMAHA MBDFArchive` — magic, model, version and a 16-byte digest, then `#FIRMWARE` records of five BE u32 fields, three NUL-terminated strings (path / description / version) and a zlib payload, terminated by `#END`", "confidence": "verified" },
+        { "label": "Container format", "value": "`#YAMAHA MBDFArchive` — magic, a 16-byte model string at `0x24`, then a fixed-size identifier field, then `#FIRMWARE` records of five BE u32 fields, three NUL-terminated strings (path / description / version) and a zlib payload, terminated by `#END`. Payloads were located by scanning forward to the zlib header rather than by trusting the length field, which was never fully decoded. See [the DM7](/platforms/yamaha-dm7/) for a field-by-field derivation of the same container", "confidence": "verified" },
         { "label": "Main application", "value": "`app_console.tgz`, 64.8 MB inflated, V3.00", "confidence": "verified" },
         { "label": "Installer", "value": "A bash script. Untars to /tmp/update, walks /yamaha/firmware.new/, compares each component's version file against the installed one and copies only what changed, running a per-component `<name>.sh` hook if present", "confidence": "verified" },
         { "label": "Bootloader", "value": "Shipped as an updatable component — `app_bootloader.tgz`, V1.03", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image signing", "value": "None — the installer performs no signature check", "confidence": "verified" },
-        { "label": "Integrity", "value": "A 16-byte digest in the archive header; no checksum ceremony in the install path", "confidence": "verified" },
+        { "label": "Integrity", "value": "No checksum ceremony anywhere in the install path. A fixed-size field follows the model string in the archive header and was previously described here as a 16-byte digest; the [Yamaha DM7](/platforms/yamaha-dm7/) derivation of the same container gives a **20-byte identifier at `0x34` that is demonstrably not a digest** of the image or any obvious sub-range. The DM3 source image is no longer in our possession, so which applies here cannot be re-derived \u2014 the field is recorded as unidentified rather than kept at a confidence it never earned", "confidence": "unknown" },
         { "label": "Encryption", "value": "None — every component is zlib, and unpacks with a 60-line script", "confidence": "verified" }
       ],
       "programmable": [
         { "rank": 1, "item": "The Linux rootfs", "note": "A conventional userland behind an unsigned, script-driven installer is a materially different proposition from the QL's µITRON image." },
-        { "rank": 2, "item": "The DSP component", "note": "Unlike the QL's fixed-function DSP7s, the DM3 loads a 3.8 MB DSP image at update time. What accepts it has not been identified." }
+        { "rank": 2, "item": "The DSP supervisor MCUs", "note": "What the update loads is Cortex-M supervisor firmware, not the signal path — so this rank buys far less than it appears to. The audio silicon behind those MCUs is register-configured, and its identity is still unknown; the DM3 service manual would settle it the way the QL's did." }
       ],
-      "verdict": "The interesting contrast with the QL is not the CPU or the OS — it is that the DSP is loadable here. That single fact changes what a modification would even mean on this platform.",
+      "verdict": "The contrast with the QL is the CPU and the OS, and **not** the DSP \u2014 which is where this entry was wrong until 2026-08-14. A Linux userland behind an unsigned script-driven installer is a materially different proposition from the QL\u2019s \u00b5ITRON image, but the signal path is fixed-function on both. Nine years apart, same answer.",
       "openQuestions": [
-        "Which silicon consumes `DSP_V121.bin`, and in what format.",
+        "Which silicon actually performs the mixing, and how it is configured. `DSP_V121.bin` boots the supervisor MCUs in front of it, not the part itself.",
         "The FPGA part has not been identified.",
+        "What the fixed-size identifier field after the model string contains. The DM3 image is no longer in our possession, so it cannot be re-derived here.",
         "No board has been inspected and no claim has been checked on hardware."
       ],
-      "traps": []
+      "traps": [
+        "**A component filed under `DSP/` is not evidence that the DSP is loadable, and this page asserted for a week that it was.** `DSP_V121.bin` is 3.8 MB, is named `DSP`, and is genuinely boot-loaded at update time by `dsp_initPowerOnBootAll` — every surface signal says *loadable DSP image*. It is several Cortex-M images plus coefficient tables. The tell is the first word, `0x200081B8`: a Cortex-M initial stack pointer, not DSP code. The published verdict here was the exact inverse of the finding until 2026-08-14, and the underlying research had already reached the right answer — the error was in the transcription onto this site, which read the first half of the argument and stopped before the correction.",
+        "**Size is not content.** Real content is \u2248 1.3 MB of that 3.8 MB partition; the remainder is zero padding, and quoting the partition size makes the payload sound three times more substantial than it is.",
+        "**The word \"digest\" was assumed, not derived.** A fixed-size field after the model string was recorded here as a 16-byte digest at `verified` confidence. Nothing had checked it against the image, and the [DM7](/platforms/yamaha-dm7/) derivation of the same container family found a 20-byte identifier that is not a digest of anything. A field whose *size* is observed and whose *meaning* is guessed is `unknown`, not `verified`."
+      ]
+    },
+    {
+      "id": "yamaha-dm7",
+      "updated": "2026-08-14",
+      "manufacturer": "Yamaha",
+      "model": "DM7",
+      "family": "DM series (codename \"hagoromo\")",
+      "class": "Digital mixing console",
+      "introduced": 2023,
+      "status": "partial",
+      "tags": ["Linux", "i.MX8M Mini", "Named-component archive", "XML parameter model", "SHARC", "Dante"],
+      "summary": "Not one console CPU but a small cluster of identical i.MX8M Mini computers running one Linux rootfs in four roles — and the only platform here that ships its entire mixer parameter model as plain XML.",
+      "headline": "`app/Descriptor/mms_*.xml` — 27 files, 1,701 collections, 2,693 parameters — declares every parameter's C type, array dimension, minimum, maximum, default and step, and every collection's packed `datasize`. That describes the console's binary state layout, not merely its parameter names, and it ships in a downloadable update. The audio itself is off-CPU on Yamaha SSP3 DSPs and a SHARC, exactly as the QL's was.",
+      "method": "Static analysis of the public firmware image `DM7_firmware_V1.75.bin` (release V1.75, main system R1.02): a walk of the container format, extraction of the Linux root filesystem and console application, a C++ RTTI type-name census of the stripped application binary, and disassembly of a small number of functions. No hardware was involved and no console was opened.",
+      "artifacts": [
+        "`DM7_firmware_V1.75.bin` — 174,392,092 bytes, 23 members, format `#YAMAHA MBDFArchive`",
+        "`app_console.tar.xz` V1.75 — the console application: three role binaries, 67 plugin `.so`, 27 XML descriptors",
+        "`rootfs-DM7-2026-01-29-…tar.xz` R1.02 — the arm64 Linux root filesystem",
+        "`DOM` 4.2.8.7 — a nested `#YAMAHA MBDFArchive` carrying its own kernel, initramfs, `dom.dtb` and three Xilinx bitstreams",
+        "`installer/install_script` R0.20 — the update procedure, in plain bash"
+      ],
+      "hardware": [
+        { "label": "Application processor", "value": "NXP i.MX8M Mini (`fsl-imx8mm`), arm64 Cortex-A53 — from the device trees, `/etc/os-release` and `/boot/imx-boot-eMMC_dm7_20231128.bin`", "confidence": "verified" },
+        { "label": "System topology", "value": "Four board roles boot from one root filesystem, selected by device tree: `main`, `bay`, `ctrl` (the CTL-DM7 surface) and `main-jig` (a factory test rig). A DM7 is a cluster of identical i.MX computers, not one CPU with peripherals", "confidence": "verified" },
+        { "label": "Mixing DSP", "value": "2 × Yamaha SSP3 at IC120 and IC123, plus a third for USB audio at IC136/IC124. The application's own factory-diagnostic strings print the board reference designators and BGA ball coordinates", "confidence": "verified" },
+        { "label": "Effects DSP", "value": "Analog Devices ADSP-21469 SHARC, over SPI, on the NAIO board — the symbol `CspiNaio21469SharcController` names transport, board and part in one string. More than one is present (`SHARC#%d`, `kernel [dspNo]`)", "confidence": "verified" },
+        { "label": "FPGAs and CPLDs", "value": "PUBe and PY64-MD are Xilinx 7-series bitstreams; `NAB` is an Altera `.rpd` and `NAB_L` a Lattice ECP5 `.bit` at the same version V0.33c; HIC, HIC_L and FDC are JAM STAPL JTAG programming streams. Each identified from its own magic bytes", "confidence": "verified" },
+        { "label": "Second-sourced silicon", "value": "The `_L` members are the same board in different fabric — `NAB`/`NAB_L` share V0.33c and `HIC`/`HIC_L` pair the same way, with the console programming whichever it finds. The contemporaneous Behringer X32 image carries the same Xilinx/Lattice pairing, so a second-source bitstream is itself a fingerprint of a 2021–2023 respin", "confidence": "inferred" },
+        { "label": "Dante subsystem (DOM)", "value": "A second computer, not a chip: Xilinx Zynq-7000, dual Cortex-A9, 512 MB, Micron n25q512a QSPI boot flash, two Cadence GEM MACs for Dante primary/secondary, running its own Linux. From the decompiled `dom.dtb`, `model = \"YAMAHA DOM\"`", "confidence": "verified" },
+        { "label": "Dante bridge fabric", "value": "A custom Yamaha FPGA IP block in the DOM's programmable logic, `compatible = \"xlnx,akashi\"` at `0x60000000`, with interrupts named `ts`/`rx`/`tx`/`rxerr`/`smi` and `rx_act`/`meter`/`rx_ka`/`daif`. Three shipped bitstream variants (`noSRC`, `syncSRC`, `asyncSRC`) select the sample-rate-conversion mode", "confidence": "verified" },
+        { "label": "Microcontrollers", "value": "Seven ARM Cortex-M images — JK (AES I/O), P-U2S2, P-MD2, P-HR1, P-FDC2 (panel boards), PY-MIDI-GPI (slot card) and USB2HOST — each identified from its vector table. Two SRAM bases appear (`0x2000_0000` and `0x1000_0000`), so at least two MCU families are in use. USB2HOST is filed as `DSP_V105.bin` but is a 3.8 MB Cortex-M image, not DSP code", "confidence": "verified" },
+        { "label": "Ethernet switch", "value": "Marvell 88E6352 managed switch, configured from userspace — the application names `88E6352 PORT#0`, `PORT#5` and `PORT#6`, so at least three ports are software-visible", "confidence": "verified" },
+        { "label": "Internal networks", "value": "`control` on 192.168.53.100/24, the three expansion bays on 240.0.10.x/24, and Dante as a MACVLAN parent with its own MAC carrying `dante0` and `dante1`. The bay links use IANA-reserved 240.0.0.0/4 space, which is a good fingerprint for telling console plumbing from console I/O in a capture", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Operating system", "value": "NXP i.MX Release Distro 4.19-warrior, image `ID=ymh-cpum-wayland` (Yamaha CPU-M, Wayland), Linux 4.19, systemd, Weston and Qt, plus about ten `yamaha-*.service` units", "confidence": "verified" },
+        { "label": "Console application", "value": "`app_console_{main,bay,ctrl}`, arm64 ELF, **stripped** — unlike the DM3's, which ships with named functions. Retained build paths disclose the source tree: project codename `hagoromo`, internal framework `Citrus`, an OpenCV-linked AI core `Trident`, and a vendored `shureacn`", "confidence": "verified" },
+        { "label": "Parameter model", "value": "27 `mms_*.xml` descriptors: 1,701 collections, 2,693 parameters, 6,572,842 bytes of declared `datasize`. Every parameter carries a C type and array dimension; numerics carry minimum, maximum, default and step; collections carry `arraysize` and the packed byte size of one instance", "confidence": "verified" },
+        { "label": "Control protocols", "value": "Three. Yamaha **SCP** (232 recovered types, the complete command set with client and server sides), a Yamaha OSC dialect addressed `/yosc:` (30 server commands, 12 notifications), and a vendored **Shure ACN** SDT/DMP stack for wireless microphone control with a Yamaha-written discovery supplement", "confidence": "verified" },
+        { "label": "SCP and YOSC are one model", "value": "YOSC is an OSC-shaped front end onto the SCP engine, not a second control model — every YOSC concept is a wrapper class over the SCP implementation of the same thing, and `SCPMODE` exists as a command in both. The competing reading, two independent engines, is unsupported: the type census contains no second parameter engine", "confidence": "inferred" },
+        { "label": "OSC address grammar", "value": "`/yosc:%s/%s/ts:<Path>` — the `ts:` segment is a path into the parameter tree whose names line up with the descriptor collections, and `subscribe` is a distinct verb, so the protocol is subscribe/notify rather than poll-only. The two `%s` fields are unresolved; a device or session identifier and a target name is inference from shape only", "confidence": "inferred" },
+        { "label": "Service ports", "value": "Not recovered, and possibly not constants. Only four `bind` call sites exist in 22 MB of `.text` because the application uses standalone Asio, and none yields a port; no port-shaped literal sits near any protocol symbol; the only mDNS service types in the binary are Audinate's. A `YSDP` class family — responder, listener and a per-host service list — is present, and its wire format is undetermined", "confidence": "unknown" },
+        { "label": "Plugin ABI", "value": "The same Perseus ABI as the QL. `createPerseusPlugin_203` appears verbatim in both, the coefficient address format is unchanged in shape, and four Premium Rack plugins have byte-identical step/pmcoef/dmcoef profiles across the two consoles — the same algorithms across a decade and two CPU architectures", "confidence": "verified" },
+        { "label": "Console plugin linkage", "value": "67 separate `.so` files under `/yamaha/app/Plugins` — 34 algorithms in GUI/DSP pairs — loaded at runtime, where the QL statically links its Premium Rack into the firmware image. All 34 DSP resource manifests were lifted statically from `.rodata`, with no host services involved", "confidence": "verified" },
+        { "label": "SHARC algorithm code", "value": "Not present anywhere in the image. Established by scanning all three application binaries, both Perseus libraries and every device member — 17 files, roughly 150 MB — for ADSP-214xx loader block chains, which finds none. There is also no NAIO firmware member in the update at all", "confidence": "verified" },
+        { "label": "Mixing coefficient layer", "value": "`Mix1000DSP` (213 recovered types) is the SSP3-side layer and names the whole mixer signal path, with array dimensions readable from its template arguments — 32 in-ports, 16 and 4 out-ports, a 20-tap port delay, a 32 × 8 port filter. It sits on a generic `DspFramework` whose class names are shared with the DM3", "confidence": "verified" },
+        { "label": "Installer", "value": "Plain bash. For each member it compares a `version` *file* against the installed copy, deletes and re-copies on mismatch, runs an optional per-member hook to flash the device, repeats the procedure for each mounted bay, and returns early on a control-surface CPU. About a third of the script is a recovery branch for one shipped root-filesystem bug", "confidence": "verified" },
+        { "label": "Shared codebase with the DM3", "value": "`SystemSetting.ini` is headed \"DM3シリーズ本体用\" — for the DM3 series. Its `ApplicationType` key enumerates `firmware`, `fader_iqc`, `editor` and `emulator`, so the same binary lineage runs off-console, and `UseMMSExplorer` names a built-in browser over the parameter tree that ships switched off", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Image signing", "value": "None. Neither the container nor `installer/install_script` carries or checks a signature", "confidence": "verified" },
+        { "label": "Encryption", "value": "None — every one of the 23 member payloads is a zlib stream, and the two `.tar.xz` members are wrapped in zlib *stored* blocks so a reader can decompress unconditionally", "confidence": "verified" },
+        { "label": "Per-member integrity", "value": "None. There is no digest field per member and nothing to check a payload against; the only integrity-shaped field in the whole format is 20 bytes in the archive header", "confidence": "verified" },
+        { "label": "Archive header id", "value": "20 bytes at offset `0x34`. Not a SHA-1 of the image or of any obvious sub-range. Every nested archive carries its own and all four observed values begin `5601`, which reads more like a version or type prefix than a pure digest", "confidence": "unknown" },
+        { "label": "Update validation", "value": "The installer validates nothing beyond comparing a version *file*, so a member whose version string is unchanged is not reinstalled even if its contents differ. This is a statement about the container and the installer only — whether the bootloader or the running application validates an image was not established", "confidence": "verified" },
+        { "label": "Plugin loading", "value": "The effect-plugin host authenticates nothing. There is exactly one `dlopen` call site in the whole application binary; the function that reaches it contains no hash, signature, certificate or filesystem-permission check, and the selection of what to load is a filename pattern rather than a name whitelist", "confidence": "verified" },
+        { "label": "Filesystem posture", "value": "The root filesystem is mounted read-only by a systemd hook; `/yamaha` is a separate writable partition, which is what the installer copies into and where the plugin directory lives. Whether any unprivileged or remote path can write there was not examined", "confidence": "verified" },
+        { "label": "Cryptography that is present", "value": "The binary's OpenSSL surface is real but belongs to the TLS/Dante paths and to an AES-256-CBC console-settings encryption path. None of it sits on the update or plugin paths", "confidence": "inferred" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "An offline client against the shipped parameter model", "note": "The descriptors give types, ranges, array dimensions and packed sizes, so the state layout can be reconstructed and the `datasize` arithmetic self-checks without hardware. The SCP and `/yosc:` command vocabularies are already recovered, which leaves only the transport blank — and the transport is a discovery protocol to be captured, not a port constant to be guessed." },
+        { "rank": 2, "item": "The Perseus effect-plugin surface", "note": "Plugins are separate loadable objects here rather than statically linked as on the QL, and the load path performs no authentication. What that reaches is the host-side coefficient computation, the parameter model and the GUI — not proven custom SHARC execution, because the SHARC algorithm code is not in the image and a plugin ships coefficients to a kernel that is already resident. `extRAM` is absent from all 34 manifests, so no shipping Yamaha plugin uses the SHARC's external SDRAM." },
+        { "rank": 3, "item": "The mini-YGDAI (PY) slot", "note": "The same route the QL offers — custom processing in the audio path with no console modification — and the image confirms the slots carry their own Cortex-M firmware and, for PY64-MD, a Xilinx bitstream. The DM7's host-side slot interface was not examined, so this is the least investigated of the three." }
+      ],
+      "verdict": "The audio is off-CPU on Yamaha SSP3 DSPs and a SHARC, so this is no more a rehosting target than the SQ-5 or the HD96. What is different is everything above the DSP boundary: where the HD96 documents itself in Thrift and Protobuf, the DM7 hands over a typed, dimensioned, byte-sized schema of its entire mixer state as XML in a public update. This is a console to interoperate with, and almost all of that work can be done before touching one.",
+      "openQuestions": [
+        "The ports for SCP and `/yosc:` are not recovered and may not be constants. The real target is the `YSDP` wire format, and a single broadcast capture from a console would settle it far more cheaply than more disassembly.",
+        "Whether anything outside the container validates an update. The container does not and the installer does not; the bootloader and the running application were not examined.",
+        "Where the SHARC algorithm code lives. It is proven absent from the image, and residency on the NAIO board fits the absence of any NAIO update member — but that is not proven.",
+        "The coefficient block format the plugin side emits is documented nowhere in the image, and it is the real ceiling on the plugin route. So is whether a plugin configuration transfer can introduce new SHARC program code or only reconfigure resident kernels.",
+        "The 20-byte archive-header id and the `kind` field (`8` versus `12`) are both undecoded; `kind` correlates loosely with unpack-versus-flash but the `installer` member breaks the pattern.",
+        "The DSP wire format, the FPGA register maps and the bay synchronisation protocol are untouched.",
+        "No claim here has been checked against a DM7. One pass, one firmware image, no hardware."
+      ],
+      "traps": [
+        "The container's section alignment is 4 bytes, not 2. A 2-byte assumption walks the first three sections correctly and then desynchronises at the `NAB` member onto a plausible-looking wrong magic. Validate the walk by landing exactly on `#END`, never on the first few hops.",
+        "`var_len` is not the offset to the payload. It is the string-area length plus a constant 8, and the payload begins at the 4-byte-aligned end of the three NUL-terminated strings — a different number whenever those strings are not a multiple of 4. Parse the strings and align; do not do arithmetic on the field.",
+        "The payloads look like xz and are zlib. The two `.tar.xz` members carry the xz magic a few bytes in, behind a zlib header wrapping a deflate *stored* block, so treating payloads as xz appears to work on exactly those members and fails on every genuinely compressed one.",
+        "Regex-scanning for the `#…` section magics finds hits inside compressed payloads. The chain has to be walked from `0x48`, not pattern-matched.",
+        "The port hunt's near-misses are worse than its failures. Walking back from the `bind` call sites yields plausible port-shaped immediates — 4096, 3072, 25600 — which are byte-swaps of the small integers 16, 12 and 100. Reading any of them as a port number would have produced a confident, wrong, publishable answer."
+      ]
     },
 
     {
       "id": "allen-heath-sq5",
+      "updated": "2026-08-07",
       "manufacturer": "Allen & Heath",
       "model": "SQ-5",
       "family": "SQ series",
@@ -199,6 +292,7 @@
 
     {
       "id": "allen-heath-avantis",
+      "updated": "2026-08-08",
       "manufacturer": "Allen & Heath",
       "model": "Avantis",
       "family": "dLive lineage (XCVI core)",
@@ -253,6 +347,7 @@
 
     {
       "id": "allen-heath-qu",
+      "updated": "2026-08-08",
       "manufacturer": "Allen & Heath",
       "model": "Qu-5 / Qu-6 / Qu-7",
       "family": "Qu 2nd-gen — SQ platform lineage",
@@ -306,6 +401,7 @@
 
     {
       "id": "allen-heath-qu-classic",
+      "updated": "2026-08-08",
       "manufacturer": "Allen & Heath",
       "model": "Qu-16 / Qu-24 / Qu-32 (+ Qu-Pac / Qu-SB)",
       "family": "Qu 1st-gen (2014)",
@@ -357,6 +453,7 @@
 
     {
       "id": "allen-heath-dante-klante",
+      "updated": "2026-08-08",
       "manufacturer": "Allen & Heath",
       "model": "Dante option card (KLANTE)",
       "family": "KLANTE — Brooklyn II replacement",
@@ -378,11 +475,11 @@
         { "label": "FPGA design", "value": "`KlanteDDRTop`, Vivado 2019.2, bitstream `KlanteDDR_7010_RU.bit` built 2024-10-31 — the small 7010 PL that carries the Dante glue", "confidence": "verified" }
       ],
       "software": [
-        { "label": "Operating system", "value": "Embedded Linux, not bare-metal — Buildroot 2018.02 (arm gnueabihf, gcc 6.4.0), booted FSBL (`boot.bin`) → U-Boot → `uImage` + `devicetree.dtb` + `rootfs.cpio.uboot` initramfs, with a `userddr.jffs2` data partition. The only A&H design here that runs Linux on audio-side silicon", "confidence": "verified" },
+        { "label": "Operating system", "value": "Embedded Linux, not bare-metal — Buildroot 2018.02 (arm gnueabihf, gcc 6.4.0), booted FSBL (`boot.bin`) → U-Boot → `uImage` + `devicetree.dtb` + `rootfs.cpio.uboot` initramfs, with a `userddr.jffs2` data partition. The only A&H design examined here that runs Linux on audio-side silicon (the AHM's silicon is unidentified)", "confidence": "verified" },
         { "label": "This build", "value": "QUDante16 V1.0.2; internal version `0.1.0`, codenames KLANTE / 'Blueberries'", "confidence": "verified" }
       ],
       "security": [
-        { "label": "Signed updates", "value": "The one signed A&H firmware in this index. SWUpdate verifies a detached `sw-description.sig` (256 B → RSA-2048, raw PKCS#1) over the manifest, and every image and script carries a SHA-256 checked against that signed manifest — authenticity, not just integrity, the opposite of the consoles' CRC/MD5-only posture", "confidence": "verified" },
+        { "label": "Signed updates", "value": "The one signed A&H firmware among those examined here \u2014 the AHM's update package has not been opened, so it is not a counterexample either way. SWUpdate verifies a detached `sw-description.sig` (256 B → RSA-2048, raw PKCS#1) over the manifest, and every image and script carries a SHA-256 checked against that signed manifest — authenticity, not just integrity, the opposite of the consoles' CRC/MD5-only posture", "confidence": "verified" },
         { "label": "Recovery", "value": "Full A/B redundancy: every partition has a `_backup` twin (kernel, FPGA, rootfs, device-tree, u-boot) written in the same update", "confidence": "verified" },
         { "label": "Container", "value": "`.q16` is a plain SWUpdate cpio — `cpio -idm` yields the whole parts list (manifest, signature, boot chain, bitstream, Dante cap)", "confidence": "verified" }
       ],
@@ -403,9 +500,78 @@
         "KLANTE is a general Brooklyn II replacement, so a finding here may generalise to any A&H product that uses this Dante card, not just the Qu."
       ]
     },
+    {
+      "id": "allen-heath-ahm",
+      "updated": "2026-08-14",
+      "manufacturer": "Allen & Heath",
+      "model": "AHM-16 / AHM-32 / AHM-64",
+      "family": "AHM series",
+      "class": "Installed system processor",
+      "introduced": 2019,
+      "status": "partial",
+      "tags": ["Zone-based DSP", "System Manager .cfg", "Published TCP protocol", "Silicon unidentified", "Firmware unopened"],
+      "summary": "The install processor whose control surface is half published. Allen & Heath document levels, mutes, routing crosspoints, preset recall and source selection — and nothing at all for EQ, delay, dynamics or metering. The other half lives in System Manager's own protocol and in its configuration files, and only the files have been opened.",
+      "headline": "A `.cfg` system file is gzip → tar, and the model is carried by the *filename* of a zero-byte member. Inside, `CurrentSettings.dat` names the entire per-zone chain in plain text — delay, parametric EQ, xGEQ, GEQ-PEQ, compressor and side chain, insert, limiter, allpass — and not one of those blocks' field layouts is decoded. No firmware image has been opened and the silicon is unknown.",
+      "method": "Static analysis of files that ship inside AHM System Manager 1.61 on macOS — the six factory `.cfg` configs from `FactoryConfigs{,16,32}/` — cross-read against Allen & Heath's published *AHM TCP/IP Protocol V1.0*. No AHM hardware was involved: none is available and none is expected, so every method has to work from files alone. The firmware images in the System Manager bundle have not been opened. Protocol behaviour was exercised only against our own simulator built from the same published document, which demonstrates self-consistency and not hardware compatibility.",
+      "artifacts": [
+        "`AHM System Manager 1.61` (macOS) — a Qt 6 application, licensed and installed on our own machine; no Allen & Heath file is redistributed",
+        "Six factory configs — `AHM-16/32/64 Default.cfg` and `AHM-16/32/64 Empty.cfg`, format version `V1.6X - Rev. 92182 - Build. 30`",
+        "`Firmware.tar.xz` (26 MB) and `IP1/IP4/IP6Firmware.bin` (~440 KB each), present in the System Manager bundle — referenced only; neither opened",
+        "*AHM TCP/IP Protocol V1.0* — Allen & Heath's published specification"
+      ],
+      "hardware": [
+        { "label": "Model range", "value": "One platform in three sizes — AHM-16, AHM-32, AHM-64. `Mixer.cfg` geometry scales exactly with the model across all six factory configs: the mono/stereo pairing maps are N/2 characters and the two fixed lines are N and N/2 long for N = 16, 32, 64. The geometry is what confirms the size, not the badge", "confidence": "verified" },
+        { "label": "Silicon", "value": "Not established. Nothing in this analysis identifies a CPU, DSP, FPGA or memory — no AHM firmware image has been opened. The SQ, Qu and Avantis findings in this index are not evidence about a rackmount install processor and are not carried across", "confidence": "unknown" },
+        { "label": "I/O classes", "value": "Three are named inline in `CurrentSettings.dat`, each numbered per instance: `$Unit Analogue Input`, `Port B Digital Input` and `Unit SLink Digital Output` — local analogue in, an option-card digital input port, and A&H's SLink expansion bus on the output side", "confidence": "verified" },
+        { "label": "Port controllers", "value": "`IP1Firmware.bin`, `IP4Firmware.bin` and `IP6Firmware.bin`, ~440 KB each, ship inside System Manager 1.61. IP1/IP4/IP6 is the same port-controller naming the Avantis package flashes from its host, so these are near-certainly the AHM's I/O port controllers rather than the main application — but neither image has been opened and the correspondence rests on the naming alone", "confidence": "inferred" },
+        { "label": "Main firmware", "value": "`Firmware.tar.xz`, 26 MB, plain xz, in the System Manager bundle. Its size relative to the port-controller images makes it the main application, and nothing beyond that is established: not its contents, not its packaging, not what it runs on", "confidence": "unknown" }
+      ],
+      "software": [
+        { "label": "System Manager", "value": "AHM System Manager 1.61 for macOS — a Qt 6 application with its QML compiled into the binary (the bundled `Resources/qml` tree is stock Qt, not the app's own). It carries the AHM firmware images and the six factory configs inside its own bundle", "confidence": "verified" },
+        { "label": "Config container", "value": "A `.cfg` system file is gzip → POSIX tar with a fixed `archive/` member set: `Mixer.cfg` (plain-text geometry), `Version.txt`, a unit-type marker, `CurrentSettings.dat`, `Scene1.dat`, and a `Devices/` directory that is empty in every factory file. A reader for the container parses all six", "confidence": "verified" },
+        { "label": "Model marker", "value": "The model is carried by the **filename** of a zero-byte member — `archive/UnitType_AHM-64-Unit.txt` has no contents. Reading the file gets you nothing; the name is the field, and it agrees with `Mixer.cfg`'s geometry in every factory config", "confidence": "verified" },
+        { "label": "`Mixer.cfg`", "value": "Six CRLF-terminated lines: a `MixerConfigV2` magic, two N/2-character mono/stereo pairing maps (`m` mono, `S` stereo, one character per channel **pair**), a decimal count, and two fixed fill lines of N and N/2 characters", "confidence": "verified" },
+        { "label": "`Mixer.cfg` line 4", "value": "An independent field of undetermined meaning. On the three Empty configs it equals N, which reads as two per map slot — but no per-slot weighting reproduces the Default configs (12 / 24 / 52 against 14 / 30 / 60 for mono=2 stereo=1, or 12 / 28 / 56 for mono=2 stereo=0), and the shortfall tracks neither N nor the stereo count. It is parsed verbatim and nothing downstream depends on it", "confidence": "unknown" },
+        { "label": "Parameter blobs", "value": "`CurrentSettings.dat` and `Scene1.dat` are a fixed-layout struct dump, not a tagged format. Sizes differ between Default and Empty for the same model — 543,794 vs 567,365 bytes for the AHM-64's `CurrentSettings.dat` — so the blobs are not a fixed-size image and carry length-varying content, most plausibly name and label regions", "confidence": "verified" },
+        { "label": "Named processing chain", "value": "The blobs store their block labels inline, which gives the per-zone parameter model for free: `Mix Delay`, `Parametric EQ`, `xGEQ`, `GEQ-PEQ`, `Compressor`, `Compressor side chain`, `Insert`, `Limiter`, `Allpass EQ`, and `Source Select Controller`. Every block worth targeting is named. Not one field layout inside them is decoded", "confidence": "verified" },
+        { "label": "Record strides", "value": "In the AHM-64 Default file the input-unit records begin at `0x834A` on a 38-byte stride, and the source-selector slots are on a 17-byte stride. The zone-processing labels that follow sit at irregular offsets, and the gap to the next label bounds each block's payload: 25 bytes after `Mix Delay`, 250 after `Parametric EQ`, 635 after `xGEQ`, 245 after `GEQ-PEQ`, 137 after `Compressor`, 21 after `Insert`, 27 after `Limiter`", "confidence": "verified" },
+        { "label": "Published control protocol", "value": "*AHM TCP/IP Protocol V1.0* is SysEx over TCP under the `00 00 1A` Allen & Heath manufacturer ID. Strips are addressed as a MIDI channel plus note number — inputs on channel 0, zones on 1, control groups on 2 — with messages for mute, level, level increment, send level and send mute, preset recall, audio playback and source select. The source-select reply adds a colour byte and an ASCII name", "confidence": "public" },
+        { "label": "What the protocol omits", "value": "There is no published message for PEQ, GEQ, delay, compressor, limiter or metering, and no way to read a channel or preset name back. The published surface is levels, mutes, routing crosspoints, preset recall and source selection, and it stops there. Everything else travels over AHM System Manager's own protocol, which Allen & Heath do not publish", "confidence": "public" },
+        { "label": "Level curve", "value": "`LV = floor(((dB + 48) / 58) × 127)`, covering −48 dB to +10 dB in a single 7-bit byte, with `0x69` (105) at unity. It truncates; it does not round, and the manufacturer's own reference table only reproduces under truncation", "confidence": "public" },
+        { "label": "Verification basis", "value": "The protocol implementation is exercised against a simulator built from the same published document. That demonstrates the two agree with each other; it is not hardware verification, and nothing on this page has been confirmed against an AHM", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Control-plane authentication", "value": "Two published ports. TCP 51325 is plaintext with no authentication of any kind. TCP 51327 is the TLS variant and expects a user profile (`0x00`–`0x1F`) and password first, replying `AuthOK` or dropping the link. Only the open port has been implemented here", "confidence": "public" },
+        { "label": "Firmware validation", "value": "Unknown, and deliberately not assumed. No AHM firmware image has been opened, so nothing is established about packaging, checksums or signing. The unsigned, CRC-or-MD5-only posture documented on the SQ, Qu and Avantis is a finding about those platforms and says nothing about this one", "confidence": "unknown" },
+        { "label": "Configuration files", "value": "The `.cfg` container carries no signature, no checksum member and no obfuscation — it is an ordinary gzip tar. What makes a system file opaque is that its `.dat` payloads are an undocumented fixed-layout struct dump, not that they are protected", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "Interoperability — and half of it is already published", "note": "Levels, mutes, input→zone and zone→zone crosspoints, preset recall and source selection are all in Allen & Heath's own document, and a complete system controller has been built from that document alone. Nothing in that half requires reverse engineering, and it is the half most integration work actually needs." },
+        { "rank": 2, "item": "The `.cfg` field layout — the cheapest route to the other half", "note": "The system file is the same parameter model at rest, and it is fixed-layout, so byte offsets are stable between saves of one model. That makes System Manager itself the oracle: change one parameter, save, diff. Deterministic, offline, no hardware and no network. The prerequisite is the save-to-save noise floor — what the application rewrites even when nothing changed — because until that is known no later diff can be read." },
+        { "rank": 3, "item": "System Manager's own protocol", "note": "Discovery, identity and the session handshake are the gate; past it the application synchronises the whole system state, which would be every parameter in protocol form. None of that wire format is known — not how units are discovered, not what identity a unit must present, not what handshake precedes the parameter stream." },
+        { "rank": 4, "item": "Firmware, last and unopened", "note": "26 MB of plain xz plus three ~440 KB port-controller images sit in the System Manager bundle. Reading a parser is the reliable way to resolve a handshake and far more work than watching one, which is why it is last — and it is also why every hardware question on this page is currently unanswerable." }
+      ],
+      "verdict": "The lopsided one. This is the only platform in the index examined entirely from the desktop software that configures it, and it shows: the control surface Allen & Heath publish is fully implemented and needed no reverse engineering at all, while everything a system processor exists to do — EQ, delay, dynamics, metering — is present here only as a list of block names and the byte gaps between them. The container is solved, the parameter model is named, and no parameter is decoded. Nothing is known about the silicon, and nothing from the SQ, Qu or Avantis transfers on the strength of the badge.",
+      "openQuestions": [
+        "The hardware, entirely — CPU, DSP, FPGA, memory, boot. No firmware image has been opened, and the other Allen & Heath platforms in this index are not evidence about a rackmount install processor.",
+        "Every `.dat` field layout. The blocks are named and their sizes are bounded; not one parameter's offset, encoding or scale is known.",
+        "Whether the 250-byte gap after `Parametric EQ, Zone NN` is an 8-band PEQ at roughly 28 bytes per band. It fits the arithmetic and it has not been tested — the gap is an upper bound on the payload, not a measurement of it.",
+        "`Mixer.cfg` line 4. It is an independent field, and no weighting of the pairing maps reproduces all three Default configs.",
+        "The whole of System Manager's wire protocol: how it discovers units, what identity a unit must present to appear in its device list, and what handshake precedes the parameter stream.",
+        "Whether a unit echoes a level or mute write back to the client that sent it. It is undocumented, and it changes how any controller has to be written — ours does an explicit debounced read-back rather than rely on an echo. Preset recall *is* documented as echoed to everyone.",
+        "Two rows of Allen & Heath's own published level table disagree with the formula printed in the same document — +5 dB (table 118, formula 116) and −47.5 dB (table 0, formula 1). Neither can be settled without a unit."
+      ],
+      "traps": [
+        "**Trusting a run of printable bytes in a `.dat` to be one field.** The string fields are fixed-width and are not cleared on write, so a short value leaves the tail of its predecessor in place and raw `strings` output is full of chimeras — `Unit AnalSource3`, `ue InputSource13`. A naive extractor does not fail visibly; it produces confident nonsense. Read the record stride, not the text: the source-selector slots are on 17 bytes.",
+        "**Deriving `Mixer.cfg` line 4 from the pairing maps.** On the three Empty configs it equals the model size exactly, which reads as two per map slot and confirms beautifully — on half the sample. No weighting reproduces the Default configs as well. Validating a rule only against the subset that suggested it is what makes this one plausible enough to ship.",
+        "**Assuming the published level formula rounds.** It truncates. At −40 dB the manufacturer's table gives 17 where rounding gives 18, and at −45 dB it gives 6 where rounding gives 7 — an off-by-one visible on two printed rows and nowhere else. The truncation then needs an epsilon in floating point: without it byte 3 lands at 2.9999999999999996 and a byte → dB → byte round trip silently loses a step.",
+        "**Reading \"500 presets in four banks of 128\" as 512 slots.** The fourth bank runs 385–500, so it holds 116. A recall grid that offers all 128 in bank 4 is offering twelve presets that do not exist."
+      ]
+    },
 
     {
       "id": "midas-hd96",
+      "updated": "2026-08-07",
       "manufacturer": "Midas",
       "model": "HD96",
       "family": "HERITAGE-D / HD series",
@@ -571,6 +737,7 @@
 
     {
       "id": "behringer-wing-compact",
+      "updated": "2026-08-07",
       "manufacturer": "Behringer",
       "model": "WING Compact",
       "family": "WING series",
@@ -653,6 +820,7 @@
 
     {
       "id": "waves-soundgrid",
+      "updated": "2026-08-07",
       "manufacturer": "Waves",
       "model": "SoundGrid",
       "family": "SoundGrid / DiGiGrid",
@@ -706,6 +874,7 @@
 
     {
       "id": "violet-dmix-128",
+      "updated": "2026-08-07",
       "manufacturer": "Violet Audio",
       "model": "dMix 128",
       "family": "dMix (dMix 64 / dMix 128)",
@@ -841,6 +1010,7 @@
 
     {
       "id": "loom",
+      "updated": "2026-08-07",
       "manufacturer": "Stoatworks Labs",
       "model": "LOOM",
       "family": "—",
@@ -880,6 +1050,7 @@
 
     {
       "id": "allen-heath-dlive",
+      "updated": "2026-08-07",
       "manufacturer": "Allen & Heath",
       "model": "dLive",
       "family": "dLive",
@@ -902,6 +1073,7 @@
 
     {
       "id": "behringer-x32-midas-m32",
+      "updated": "2026-08-07",
       "manufacturer": "Behringer / Midas",
       "model": "X32 / M32",
       "family": "X32",
@@ -994,6 +1166,7 @@
 
     {
       "id": "analog-way-midra",
+      "updated": "2026-08-08",
       "manufacturer": "Analog Way",
       "model": "Midra series",
       "family": "Midra",
@@ -1059,6 +1232,7 @@
 
     {
       "id": "analog-way-livecore",
+      "updated": "2026-08-08",
       "manufacturer": "Analog Way",
       "model": "LiveCore",
       "family": "LiveCore (Ascender / NeXtage / SmartMatriX Ultra)",
@@ -1123,6 +1297,7 @@
 
     {
       "id": "analog-way-livepremier",
+      "updated": "2026-08-08",
       "manufacturer": "Analog Way",
       "model": "LivePremier / Aquilon",
       "family": "LivePremier (Aquilon RS / C)",
@@ -1188,6 +1363,7 @@
     },
     {
       "id": "blackmagic-atem",
+      "updated": "2026-08-08",
       "manufacturer": "Blackmagic Design",
       "model": "ATEM (switcher family)",
       "family": "ATEM — Production/Television Studio, Constellation, Mini/SDI",
@@ -1327,6 +1503,154 @@
         "Taking every ATEM for the same chip. The CPU changes generation to generation — a PowerPC ELF on a 2012 frame, a little-endian MicroBlaze on a 4K one, an ARM on a Constellation — and only the Xilinx fabric is the constant. A finding from one image does not carry to the next without checking the machine field.",
         "Assuming the whole line is locked because the newest models are. Most of the packages are plain zlib behind an integrity digest with no signature at all; the encryption is a recent arrival on a minority of models, not a family-wide policy.",
         "Chasing the FPGA. It is the obvious centre of the machine and it is a dead end for anyone who wants to control an ATEM — the bitstream is opaque, and the entire useful surface is the published UDP protocol the switcher already speaks."
+      ]
+    },
+    {
+      "id": "shure-mxcw",
+      "updated": "2026-08-14",
+      "manufacturer": "Shure",
+      "model": "MXCW",
+      "family": "Microflex Complete Wireless — MXCWAPT / MXCW640 / MXCWNCS",
+      "class": "Wireless conference system",
+      "introduced": 2018,
+      "status": "partial",
+      "tags": ["Xilinx FPGA", "VxWorks + Qt", "RSA-2048 signed", "AES-encrypted payloads", "ACN/DMP over WebSocket", "ASCII control on 2202"],
+      "summary": "A conference platform that is closed on the inside and unusually generous on the outside: every application payload in the access point is encrypted, while the control interface is plain ASCII on an open port that pushes a report every time anything changes.",
+      "headline": "The access point signs its updates — 256 raw bytes of detached signature over a manifest carrying a SHA-256 per payload — and encrypts the Linux image, the application and the web GUI on top, so none of its software has been read. Two things ship in the clear: the Xilinx bitstream, and the charging station, which is not encrypted at all and hands over the client half of Shure's private device protocol.",
+      "method": "Static analysis of the 7.1.3, 7.1.4 and 7.3.0 firmware packs for all three devices, obtained through Shure Update Utility, read against Shure's own *MXCW Command Strings* and *MXCW User Guide* publications. The application payloads are encrypted and none was decrypted; the readable findings come from the pack containers, the plaintext FPGA bitstream, and the charging station's unencrypted web application. No hardware was inspected and no frame of the control protocol has been observed on a wire.",
+      "artifacts": [
+        "`MXCWAPT.7.3.0.pack` — a plain zip: `BuildInfo.json`, `MXCWAPT.manifest.xml`, a 256-byte `MXCWAPT.manifest.xml.sig`, `UpdateInstructions.xml` (UploadCommand, per-file Copy, then Execute), and the payloads. The manifest also carries `DCID` device-class UUIDs",
+        "`apt_fpga.bin` (9.7 MB) — a plaintext Xilinx configuration image: `FF` padding, the bus-width detect pattern `000000BB 11220044`, the sync word `AA995566`, then type-1 configuration packets",
+        "`linux.bin` (13.3 MB), `app.tge` (5.0 MB), `gui.tge` (13.3 MB) — the access point's Linux image, conference application and web application, all encrypted",
+        "`vxWorks`, `QtApp.tar.gz`, `m4app.bin`, `dsp.bin`, `QtLib.tar.gz`, `QtFonts.tar.gz`, `dsp.tar.gz` — the MXCW640 conference-unit payload set (29.7 MB), encrypted throughout",
+        "`m4app.z` and `OdinGui.z` — the MXCWNCS charging station's payloads, plain zlib and not encrypted; `OdinGui` decompresses to its web application in the clear (AngularJS 1.8 + Angular Material)",
+        "`microflex-complete-9.4.0` — the **wired** MXC / DCS 6000 update bundle, read as background: `cu_DIS-CCU_*.dis` central-unit images, `FUU_Library.xml`, and the `action2` flash script"
+      ],
+      "hardware": [
+        { "label": "System composition", "value": "Three devices on one platform: the **MXCWAPT** access point (RF master, audio matrix, web server, Dante endpoint and third-party control endpoint, PoE powered), the **MXCW640** battery conference unit (gooseneck mic, loudspeaker, 4.3-inch touchscreen, NFC card slot, SB930 smart battery), and the **MXCWNCS** ten-bay charging station, which has its own web application and its own control endpoint on 2202. One access point serves up to **125 units on one RF channel**", "confidence": "public" },
+        { "label": "RF layer", "value": "IEEE 802.11 a/g PHY across 2.4 GHz ISM and 5 GHz UNII including DFS, AES-128 on the link. Slot allocation is asymmetric and fixed: **8 uplink channels, allocated only to active speakers**, and **9 downlink** — one floor mix plus eight interpretation channels — broadcast continuously to every unit. Four power steps from 1 mW to 25 mW, and a built-in spectrum analyser that ranks channels continuously and quarantines a dirty one for 30 minutes", "confidence": "public" },
+        { "label": "What actually runs the radio", "value": "Shure runs a proprietary TDMA scheduler over a commodity Wi-Fi PHY rather than a bespoke radio: the spec table names 802.11 a/g, but fixed slot counts, deterministic 16 ms latency and 125 units on one channel are not CSMA behaviour. The scheduler most plausibly lives in the access point's FPGA — that is what an unencrypted 9.7 MB bitstream is for — but nothing in the pack says so, and the encrypted Linux image or a separate DSP are the competing readings", "confidence": "inferred" },
+        { "label": "Access-point FPGA", "value": "`apt_fpga.bin` is a **plaintext Xilinx configuration image**, opening with the standard preamble — `FF` padding, bus-width detect `000000BB 11220044`, sync word `AA995566`, type-1 packets. So the access point carries a Xilinx FPGA, and its bitstream is the one payload of the three devices' application images that is not encrypted. The file is raw `.bin` and names no part", "confidence": "verified" },
+        { "label": "Conference-unit processors", "value": "The MXCW640 pack ships `vxWorks`, `QtApp.tar.gz`, `m4app.bin` and `dsp.bin`, so the unit is **VxWorks with a Qt UI, an ARM Cortex-M4 companion and a DSP**. The filenames and sizes are read directly from a manifest that carries a SHA-256 for each, and the Qt lineage is shared with the wired MXC640 (whose bundle ships `6kU_MXC640_QtLib_5.5.1.96`) — but every one of those payloads is encrypted and none has been opened, so the naming is the entire evidence", "confidence": "inferred" },
+        { "label": "Audio architecture", "value": "24-bit / 48 kHz throughout. Latency mic → speaker 16 ms, mic → analogue out 9.2 ms, analogue in → speaker 7.7 ms. The access point carries one analogue XLR in and one out plus **10 Dante in and 10 Dante out**, with an internal matrix mixer whose sources are the floor mix, eight arbitrary group mixes, or one of the eight uplink slots taken directly", "confidence": "public" },
+        { "label": "Charging station — the readable device", "value": "The MXCWNCS is not encrypted at all: `m4app.z` and `OdinGui.z` are **plain zlib**, and its 7.1.4 and 7.3.0 packs are identical in size, so the charger did not change between those releases. `OdinGui` decompresses to 4.1 MB that is 83 % printable — its web application in the clear. `Odin` is a Shure platform name spanning at least the access point and the charger", "confidence": "verified" }
+      ],
+      "software": [
+        { "label": "Pack format", "value": "A `.pack` is a plain zip holding `BuildInfo.json`, a manifest naming a key, a version and a SHA-256 for every payload, a detached signature over that manifest, and `UpdateInstructions.xml` — an UploadCommand, a Copy per file, then an Execute. The manifest's `DCID` entries are device-class UUIDs, matching the `controllerDCid` concept in the charging station's protocol code", "confidence": "verified" },
+        { "label": "Access-point software", "value": "`linux.bin`, `app.tge` and `gui.tge` — a Linux image, the conference application and the web application, in that order of size. **All three are encrypted and none has been read**: the split between them is read off the manifest, not off any code", "confidence": "inferred" },
+        { "label": "TPCI — the published control interface", "value": "ASCII, one message per `< … >` pair, on **TCP 2202**. Four message types: `GET`, `SET`, `REP` and `AUDIO_SAMPLE`. The load-bearing fact is that **`REP` is pushed unsolicited whenever a parameter changes by any means** — front panel, web app, chairperson, or a participant's own speak button — so a controller connects once, seeds with a `GET`, and never polls. Seat numbers run 1–65535, index `0` on a `GET` fans out over online registered seats, free text is brace-wrapped UTF-8, gain and volume are offset by 30 and metering RMS by 98", "confidence": "public" },
+        { "label": "The seam TPCI does not close", "value": "`AUDIO_SAMPLE` carries `slot1Peak slot1Rms … slot8Peak slot8Rms`, and **no command in the published set maps a slot to a seat**. Per-speaker level is therefore not obtainable over this interface at all; the ways round it are per-slot Dante outputs with your own detection, or the private protocol below. The reading is a complete enumeration of a published command reference rather than a stated absence, and the private API may well expose the mapping", "confidence": "inferred" },
+        { "label": "Shure's private device protocol", "value": "The charging station's unencrypted web application talks to its own device over a **binary WebSocket with subprotocol `dmp`**, framed with `DataView` writes, `MAX_BUF_SIZE` 2462, a five-second discovery timeout and 16-byte device UUIDs. Its constants are in the clear: clusters `DMP` 162, `KEEP_ALIVE` 163, `SDT` 164, `DISCOVERY` 167, `SID` 168; DMP vectors `GET_REPLY` 3 through `DEALLOCATE_MAP` 16 including `SUBSCRIBE` 7 and `EVENT` 4; discovery vectors `ANNOUNCE` 1 … `ATTR_RSP` 7; address types `SINGLE` / `RANGE_SINGLE` / `RANGE_FIXED` / `RANGE_MIXED` with `VECTOR_FLAG` `0x4000`", "confidence": "verified" },
+        { "label": "What that protocol is", "value": "**ACN — ANSI E1.17**: SDT carrying DMP, the same pair Shure's own port table lists on UDP 5568 multicast and 57383 unicast, and one of the charger's property groups is named `NETWORK_ACN`. The vocabulary is standard ACN rather than a bespoke invention. The reading rests on the constant names and the port table, since no frame has been captured — and it matters because **DMP has the primitive TPCI lacks: `SUBSCRIBE` on an arbitrary property address, answered with pushed `EVENT`s**", "confidence": "inferred" },
+        { "label": "The property map", "value": "Knowing the protocol is not knowing the vocabulary. The charging station's application carries only charger-domain properties — `CHRG_SLOT`, `BATTERY_PRESENT`, `NUM_SLOTS`, `SLOT_BAYS`, `CHARGE_STATUS` — and no seat or microphone properties whatever. The access point's own property IDs live in `gui.tge`, which is encrypted", "confidence": "unknown" },
+        { "label": "Build provenance", "value": "The tar headers inside the conference unit's wrapped payloads leak the build hosts: `Administrators / buildmaster_ATE` on a Windows box for `QtLib` (February 2019) and `buildmaster / buildmaster` for `QtFonts` (December 2020)", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Signed updates", "value": "The integrity chain is authenticity, not just integrity: the manifest signature is 256 raw bytes → **RSA-2048** over `MXCWAPT.manifest.xml`, and that signed manifest carries a **SHA-256 for every payload file**. Nothing in the pack can be swapped without breaking one or the other", "confidence": "verified" },
+        { "label": "The encryption container", "value": "Every encrypted payload has the same shape — `[ciphertext, length a multiple of 16][md5(ciphertext) as 32 ASCII hex]`. Confirmed on all three access-point payloads: strip the last 32 bytes, MD5 the rest, and it matches the trailer exactly", "confidence": "verified" },
+        { "label": "The cipher", "value": "Shannon entropy 7.9999 over the first 2 MB of each payload, zero repeated blocks at 8, 16 or 32 bytes across 4 MB, and a body length always ≡ 0 mod 16. That is consistent with **AES in CBC or CTR** and rules out ECB. There is no key, no IV and no header identifying either — presumably both live in the bootloader or the running system. **No key was recovered and nothing has been decrypted**", "confidence": "inferred" },
+        { "label": "The `.tar.gz` payloads are a wrapper, not content", "value": "`QtLib.tar.gz`, `QtFonts.tar.gz` and `dsp.tar.gz` each gunzip to a tar holding exactly one member named after the archive, and that member is encrypted. `QtApp.tar.gz` is not gzip at all — it is encrypted from byte zero, despite the name", "confidence": "verified" },
+        { "label": "Network posture", "value": "From Shure's own port table: **no HTTPS and no authentication documented anywhere**. TCP 2202 is open by default and unauthenticated, so anything with IP reachability to the access point can turn microphones on and off; TCP 64000, Shure's firmware update channel, is also open by default, while FTP, SSH, Telnet, HTTPS and the 8023 debug console are closed. Discovery is mDNS on 5353, with SLP multicast on 8427 and SDT on 5568/57383 as Shure's undocumented inter-device fabric. This is a control-VLAN device by construction", "confidence": "public" },
+        { "label": "Against the wired ancestor", "value": "The signing is a marked change from the wired MXC / DCS 6000 line — the same manufacturer, the same product family name, an entirely different posture. Those central-unit images are **unsigned**, covered only by an md5 that ships in the same archive as the image it protects", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "TPCI on TCP 2202 — the published, push-based control interface", "note": "ASCII, documented by Shure, open by default, and it reports every change unsolicited, so a third-party controller connects once, seeds with a `GET`, and reacts. This is the whole useful surface and it needs no firmware access at all: a mic-follows-camera sidecar was built on it and runs end to end against a simulator, with no access point ever in the loop." },
+        { "rank": 2, "item": "Dante, for anything the protocol will not tell you", "note": "Ten Dante outputs, and an output can be fed directly from one of the eight uplink slots — so per-active-speaker audio leaves the box even though the slot's identity does not. Level-driven work belongs here, not on `AUDIO_SAMPLE`." },
+        { "rank": 3, "item": "The private ACN/DMP WebSocket", "note": "Richer than TPCI, with `SUBSCRIBE` on a property address answered by pushed `EVENT`s. The framing and vocabulary are known from the charging station's unencrypted application; the access point's property IDs are not, and enumerating them via `ATTR_RSP` needs a real device on a bench." },
+        { "rank": 4, "item": "Nothing inside the firmware", "note": "The application payloads are encrypted with no key in hand, and the update path is RSA-signed over a SHA-256 manifest. The images are closed by construction, and everything worth doing is on the network side of the box." }
+      ],
+      "verdict": "Closed inside, generous outside. Nothing of the access point's software has been read — the Linux image, the conference application and the web GUI are all encrypted behind an RSA-signed manifest, and the conference unit's entire payload set with them. What ships in the clear is the Xilinx bitstream that is almost certainly the radio, and the charging station, which is not encrypted at all and gives up the client half of Shure's private device protocol: ACN/DMP over a binary WebSocket, carrying the one primitive the public interface lacks. And the public interface is genuinely good — plain ASCII on an open port, unauthenticated, reporting every change unsolicited so a controller never has to poll. It has exactly one hole, and it is a load-bearing one: eight uplink slots are metered individually and nothing in the protocol says which seat is in which slot, so anything that wants to know who is loudest has to leave TPCI and take the audio.",
+      "openQuestions": [
+        "The payload plaintext. `linux.bin`, `app.tge`, `gui.tge` and the whole MXCW640 set are encrypted, no key was recovered and nothing was decrypted — so every claim about the access point's and the conference unit's software rests on filenames in a manifest.",
+        "The access point's DMP property map. The charging station's application carries only charger-domain properties, and the access point's live in the encrypted `gui.tge`. Whether per-uplink-slot occupancy is exposed as a subscribable property is the single question that would close the slot-to-seat gap, and it cannot be answered without a device.",
+        "Which Xilinx part, and whether it really is the TDMA scheduler. The bitstream is raw `.bin` naming no device, and the RF-engine reading comes from the timing budget rather than from anything in the image.",
+        "Whether a second, read-only controller on 2202 is harmless. Shure says *\"use only one controller per system to avoid messaging conflicts\"*, which reads as a warning about conflicting `SET`s — reports are broadcast and the protocol has no session concept — but that is a reading, not a tested fact.",
+        "The `RSSI` encoding. Shure documents the units and not the encoding; the only prior art applies an offset of −120 and its own comment calls the offset assumed.",
+        "Whether the interface needs a keepalive at all. None is specified, a dead TCP session is indistinguishable from a quiet meeting, and the 30 s probe / 60 s timeout pattern in general use was invented by one third-party module for reasons nobody recorded."
+      ],
+      "traps": [
+        "Treating the one other public implementation as corroboration. The Bitfocus Companion MXCW module was read in full — every commit and every issue — and it is a careful transcription of the same Shure publication this work uses: four substantive commits in three and a half years, and not one report of hardware behaving differently from the document. Two readings of one document agreeing is not confirmation, and an earlier draft here claimed independent corroboration and had to be corrected. The module contributes exactly two things of its own, a keepalive pattern and an explicitly-guessed `RSSI` offset.",
+        "Predicting the private API from the wired ancestor. The wired DIS-CCU serves its own web UI from a JSON-over-WebSocket endpoint, so MXCW was expected to do something similar. That a richer private API exists was right; the guessed shape was wrong. It is binary ACN/DMP with a `dmp` subprotocol, and a JSON parser pointed at it sees nothing at all.",
+        "Reading `AUDIO_SAMPLE`'s eight slot pairs as eight seats. The frame looks exactly like per-participant metering and it is not — slots are uplink channels, occupancy is dynamic, and no message attributes a slot to a seat. Anything built on that reading behaves perfectly in a two-person test and points at the wrong person in a real meeting.",
+        "Believing a filename. `QtApp.tar.gz` in the conference-unit pack is not gzip; and the three payloads that genuinely are gzip each contain a tar holding one member named after the archive, which is itself encrypted. The wrapper is not the content, twice over.",
+        "Working from Shure's consolidated ports PDF. It still lists the web application on 8180 unconditionally, while the MXCW user guide's own table says 8180 is legacy-firmware-only and current units serve port 80. The stale document is the more official-looking one.",
+        "Assuming at most one index before a parameter name. `VOTING_BUTTON_NAME` takes two — `< GET 3 0 VOTING_BUTTON_NAME >` — and it is the only command in the protocol that does. A parser that treats the token after the first integer as the parameter name reads the parameter as `2` and drops the message silently rather than failing, which is exactly what the Companion module does."
+      ]
+    },
+    {
+      "id": "birddog-ndi-converters",
+      "updated": "2026-08-14",
+      "manufacturer": "BirdDog",
+      "model": "NDI converters (Studio / Flex / 4K / PLAY)",
+      "family": "BirdDog converters — Studio NDI, Mini, Flex 4K, 4K HDMI/SDI/QUAD, OG4/GEAR, PLAY / Pod",
+      "class": "NDI video converter",
+      "introduced": 2018,
+      "status": "documented",
+      "hardwareBasis": "One BirdDog PLAY (firmware 1.0.30) on our bench, running our own code. The FPGA models are file-only.",
+      "tags": ["Zynq UltraScale+", "Rockchip RK3328", "Linux", "Modes are bitstreams", "No signing", "One image, two products"],
+      "summary": "A range sold as one family that is really three platforms. Every converter in it is FPGA-based — Zynq-7000 on the 1080p line, Zynq UltraScale+ with a hard video codec unit on the 4K line — except the decode-only PLAY, which has no programmable logic at all and is an ordinary Rockchip applications processor running Debian.",
+      "headline": "The NDI codec is not software. On every encoder in the range it is a block in FPGA fabric with a thin kernel driver bolted to it (`birddog_speedhq.ko`), which is why encoder and decoder, and 1 G and 10 G networking, ship as **separate bitstreams** rather than as settings. PLAY is the exception that proves it: with no fabric to put a codec in, it decodes full-bandwidth NDI in software on four Cortex-A53s.",
+      "method": "Two bases, deliberately kept apart. The range-wide silicon inventory is static analysis of twenty firmware packages published on BirdDog's own unauthenticated download pages, 2020–2025, plus the RKFW recovery image for PLAY. Everything labelled *measured* was then read off **one running PLAY on our bench** (unit `.42`, firmware 1.0.30) — the first entry in this index with any hardware behind it. No unit was opened, no FPGA model was ever powered, and every claim about Studio, Mini, Flex and the 4K family remains file-only.",
+      "artifacts": [
+        "`BirdDog_<MODEL>-<VER>.zip` × 20 — each a gzip'd `.fw` holding a GNU tar of `bdpff` (the encrypted payload), a 207-byte `birddog-update.sh` stub and an unstripped aarch64 or armhf `update` ELF",
+        "Xilinx `.bit` headers throughout the FPGA models — the single most reliable silicon evidence in the corpus, naming the exact part, the design name and the Vivado version that built it",
+        "ZynqMP device trees from the 4K family, whose `model` string names the configuration outright (`ZCU5EV 4K Single Encoder Model V202 PS 1G No PHY ID vcu ini`)",
+        "`PLAY_1.0.30.img` — the RKFW/RKAF recovery-mode image: loader, u-boot, trust, kernel, DTB, rootfs and partition table, i.e. the whole device rather than an overlay",
+        "`/bin/PPApp` — the PLAY application, its `DT_NEEDED` list, its imported NDI symbols and its own log strings",
+        "One PLAY, firmware 1.0.30, on the bench — the source of every `measured` row below"
+      ],
+      "hardware": [
+        { "label": "Two FPGA platforms, one SoC", "value": "**Xilinx XC7Z020-CLG400** (Zynq-7000, 2× Cortex-A9, 32-bit `armv7l` userland) on Studio NDI R3/R4, Mini and all three Flex 4K models; **Xilinx XCZU5EV-FBVB900-1-E** (Zynq UltraScale+ MPSoC, 4× Cortex-A53) on 4K HDMI, 4K SDI, 4K QUAD and OG4/GEAR. Read out of the `.bit` headers on every model and every firmware generation, and corroborated by the ZynqMP device tree", "confidence": "verified" },
+        { "label": "The `EV` suffix is the point", "value": "`XCZU5EV` carries the hard H.264/H.265 **VCU**, and the 4K device trees use it: `vcu@80300000` with `vcu_core_enc`, `vcu_core_dec`, `vcu_mcu_enc` and `vcu_mcu_dec` nodes. One vendor image is even named `…rxfw330d04apr25vcu.img.gz`. So on the 4K units, NDI|HX rides the hard codec and full-bandwidth SpeedHQ rides the fabric", "confidence": "verified" },
+        { "label": "Modes are FPGA images, not software settings", "value": "The 4K units ship a *tree* of bitstreams and load one at runtime: `etc/ENC/birddog-nicmode-1g/system.bit`, `etc/ENC/birddog-nicmode-10g/…`, `etc/DEC/…`, plus `DUAL_ENC`, `DUAL_DEC`, `M1X1` and `M2X2`. **Encoder versus decoder, and 1 G versus 10 G networking, are different bitstreams.** On 4.5-LTS the QUAD's input/output split was baked in the same way — `quad_1i3o`, `quad_2i2o`, `quad_3i1o` as three separate builds — while by 6.1.349 the HDMI and SDI units share one unified `SDI_HDMI_ENC_DEC` design", "confidence": "verified" },
+        { "label": "The Zynq-7000 platform is a third-party SoM", "value": "Kernel is `4.4.0-snickerdoodle+` — the BSP derives from the **krtkl snickerdoodle** Zynq-7000 module, not a BirdDog carrier BSP. The bitstream is reloaded from userspace at every boot (`cat /etc/tiny_4k.bit > /dev/xdevcfg`, then poll `f8007000.devcfg/prog_done` — the Zynq DevC controller), and every design in this group was built with Vivado 2016.4", "confidence": "verified" },
+        { "label": "PLAY — no FPGA at all", "value": "**Rockchip RK3328**: four Cortex-A53 in a single cluster, Mali-450MP2, HDMI 2.0a. No `.bit` file, no `/dev/xdevcfg`, no `fpga_manager` anywhere in the image. The recovery image says so in vendor metadata — RKAF header `model = RK3328`, `parameter.txt` `MACHINE: 3328` — after the sysfs GPU address had already pinned it", "confidence": "verified" },
+        { "label": "PLAY's board is a reference design", "value": "The device tree in the recovery image is **stock Firefly ROC-RK3328-CC**: `model = \"Firefly ROC-RK3328-CC\"`, `compatible = \"firefly,roc-rk3328-cc\", \"rockchip,rk3328\"`. BirdDog ship the reference board's DTB unaltered, so PLAY is that publicly documented design or close enough that its device tree boots unmodified", "confidence": "verified" },
+        { "label": "PLAY memory and clock", "value": "**2 GB RAM**, four A53s capped at **1.392 GHz**, governor `performance`. No firmware image can answer this — there is no memory node in the DTB, because the Rockchip loader detects DRAM and patches it in at boot — so it had to come off a running unit", "confidence": "measured" },
+        { "label": "PLAY video blocks", "value": "`rkvdec@ff360000` and `vpu_service`/`vdpu@ff350000` for decode, `vepu@ff340000` for encode, `rockchip,rk3328-vop@ff370000` and `rockchip,rk3328-dw-hdmi@ff3c0000` for display, with power domains `pd_vpu`, `pd_hevc` and `pd_video`. `PPApp`'s own mode table runs `2160p23.97` to `2160p60`", "confidence": "verified" },
+        { "label": "What the PLAY's decoder actually does", "value": "Hardware decode is effectively free: a 1080p H.264 clip plays in real time at **~11% of one core**, the VOP confirmed scanning out NV12 on `win1-0` at 1920×1080p60, and the decoder reaches **218 fps at 720p**. This is the block the whole product rests on and it is barely working", "confidence": "measured" },
+        { "label": "What the PLAY's encoder cannot do", "value": "The `vepu` is a 2017 Hantro-class block: **H.264 only, no HEVC, no B-frames**. Its GStreamer element's sink caps stop at **1920×1088 at 60/1**, it exposes no tunable properties at all in this build (it derives a bitrate from the caps — 3.456 Mbps at 720p30), and it measured **~31 fps at 720p** under load and **~19.6 fps at 1080p** in a decode-then-encode pipeline. 4K encode is not available at any effort. Every BirdDog *encoder* product is FPGA for exactly this reason", "confidence": "measured" },
+        { "label": "PLAY networking and USB", "value": "Gigabit: `gmac2io` in RGMII with an external PHY, the internal 100 Mbit `gmac2phy` path disabled — and the unit sustained **115 MB/s, ~920 Mbps, line rate** on the wire. The USB-A socket is a host port that enumerates keyboards, mice and a UVC camera; the device tree enables the USB 2.0 OTG controller, EHCI/OHCI host and a USB 3.0 dwc3 alongside each other, and **which of them reaches the socket was not established**", "confidence": "measured" },
+        { "label": "PLAY audio", "value": "HDMI audio is **card 1** (`rockchiphdmi`, `hw:1,0`). Card 0 is the SoC's own i2s and goes nowhere on this board — a distinction no amount of reading the device tree makes obvious", "confidence": "measured" }
+      ],
+      "software": [
+        { "label": "Three operating systems", "value": "Zynq-7000 models run 32-bit `armv7l` Linux `4.4.0-snickerdoodle+`; the 4K family runs `4.14.0-xilinx-v2018.1` on 4.5-LTS through `5.4.0-xilinx-v2020.2` on 5.5; PLAY runs **Debian 10 aarch64** on a Rockchip BSP kernel `4.4.194` (Linaro GCC 6.3, built July 2023 — a Firefly/Rockchip build, not BirdDog's)", "confidence": "verified" },
+        { "label": "PLAY's kernel has no modules — none at all", "value": "`lsmod` is empty, there is no `/lib/modules/4.4.194/modules.dep.bin`, and `modprobe` cannot do anything. Everything the product needs is built in: `uvcvideo` (1.1.1), `usb-storage`, `vfat`, `ntfs`. Things that are *not* built in cannot be added without replacing the kernel — `CONFIG_TUN` is absent, and so is exFAT. FUSE, by contrast, is complete (`/dev/fuse` at 10,229, both `fuse` and `fuseblk` registered), which quietly moves a whole class of problems into userspace", "confidence": "measured" },
+        { "label": "Where the NDI codec lives", "value": "`birddog_speedhq.ko` — the driver for the SpeedHQ block in fabric — ships with every **encoder** model (Flex IN, Flex BP, 4K HDMI, 4K SDI, 4K QUAD, OG4/GEAR) and is absent from the decode-only ones (Flex OUT, PLAY). It sits alongside `birddog_audio.ko`, `birddog_audio_playback.ko` and `birddog_aes3audio_playback.ko`. The codec is a hardware block with a thin driver, not a library", "confidence": "verified" },
+        { "label": "PLAY runs two receivers in parallel", "value": "`PPApp` creates both and picks: `NDIRecvVideoHX()` hardware-decodes NDI|HX (H.264/HEVC) through Rockchip MPP, while `NDIRecvVideoFull()` decodes full-bandwidth **SpeedHQ in software inside `libndi.so.5`**, on the four A53s. A shipping commercial product decodes full-bandwidth NDI on a 2017 quad-A53 with no hardware assistance whatsoever", "confidence": "verified" },
+        { "label": "The NDI library surface on the device", "value": "Both shipped copies (`libndi.so.5.5.2` and `libndi.so.6.0.1`) export **entry points that do not exist in the free NDI SDK** — `NDIlib_recv_create_v4`, `NDIlib_recv_set_video_allocator` and `NDIlib_routing_create_v2` on the receive side, and `send_compressed_video`, `NDIlib_send_get_target_bit_rate` and `NDIlib_send_is_keyframe_required` on the send side. Checked against a complete free-SDK header set held locally, where all of them are absent. `PPApp` imports the receive ones, which is what lets the video processing unit see a compressed bitstream at all. Both copies also carry the SDK's 30-minute development-use string, which appears in **every** build of that library and therefore proves nothing", "confidence": "verified" },
+        { "label": "The rootfs carries a media stack the product never uses", "value": "**GStreamer 1.14.4** is on the stock PLAY rootfs with the Rockchip **`rockchipmpp`** plugin (`mppvideodec`, `mpph264enc`, `mppjpegdec`, `mppjpegenc`) and **`kmssink`** — none of which `PPApp` touches. `PPApp`'s `DT_NEEDED` is `librockchip_mpp.so.1`, `libdrm.so.2` and `libndi.so.5` and little else; it binds MPP output buffers straight into DRM framebuffers with no scaler and no framework in between", "confidence": "measured" },
+        { "label": "One display owner", "value": "`PPApp` is DRM master on `card0` and there is no sharing — two processes cannot both modeset. Anything else that wants the HDMI output has to stop it first, which is confirmed on hardware: `kmssink` works only once the vendor runner is stopped, and while it is stopped the output is simply dark", "confidence": "measured" },
+        { "label": "PLAY and Pod are one image", "value": "The installer accepts exactly two hardware identifiers for this package — `BirdDog PLAY` and `BirdDog Pod` — and `S99birddog-setup` **splits them at first boot by probing for a `wlan0` interface**: Wi-Fi present ⇒ PLAY, absent ⇒ Pod. Pod additionally enables the UVC and UAC1 USB gadgets so it enumerates as a webcam; PLAY explicitly disables ADB. Pod ends up on Debian 11 and PLAY on Debian 10, from the same package, via a `node_modules_bullseye` swap", "confidence": "verified" },
+        { "label": "Control surfaces", "value": "Three, of which only one has a login. A Go web UI on port 80; an **Express REST API on port 8080** — plain readable JavaScript in `/bin/BirdDogSrvr/` with a per-feature module layout, roughly 80 endpoints, and a spreadsheet in the image (`etc/API_Management.xlsx`) documenting them; and **SSH on port 9031**, moved there by `S99birddog-setup` rewriting `sshd_config`. `libsrt` is statically linked into `PPApp`, so source selection is NDI, SRT or CloudConnect", "confidence": "verified" }
+      ],
+      "security": [
+        { "label": "Firmware container", "value": "Every published `.fw` is a gzip'd GNU tar holding an **AES-256 encrypted payload** (`bdpff`) beside the small shell stub and the `update` binary that decrypts it. The interesting structural fact is the scope: **one password serves the entire product line — PLAY, Flex, 4K HDMI/SDI/QUAD, OG4/GEAR — and every firmware generation sampled, 2023 through 2025.** Four distinct `update` binaries across twenty payloads, one key", "confidence": "verified" },
+        { "label": "Pre-2022 firmware is not encrypted at all", "value": "Mini 20.11.x, Studio NDI R3/R4 20.11.x and Flex 4.5.x-LTS skip the encrypted layer entirely — the inner tar *is* the `birddog-platform-files/` rootfs overlay, in the clear. The encryption is a later arrival, not a family-wide policy", "confidence": "verified" },
+        { "label": "Integrity, not authenticity", "value": "The `update` binary checks an md5 of the 207-byte shell stub against a hard-coded digest, and the installer gates on `/etc/birddog-hardware-version` (a plain string such as `BirdDog PLAY`) against a whitelist. Those are the only checks in the chain: **there is no signature verification of any kind anywhere in the update path.** The encryption layer is obfuscation, and the model gate is a compatibility check, not an authenticity one", "confidence": "verified" },
+        { "label": "Payload contents", "value": "Inside: an installer script, a `birddog-platform-files/` tree copied verbatim onto `/` with `cp -rf`, optional `.deb` packages, and on the Zynq models the `BOOT.BIN` carrying first-stage loader, bitstream and u-boot. The kernel and bootloader are not in the update package on PLAY at all", "confidence": "verified" },
+        { "label": "Network services", "value": "The REST API on port 8080 has **no authentication of any kind** — no auth middleware anywhere in `/bin/BirdDogSrvr/*.js` — and sets `Access-Control-Allow-Origin: *`. The web UI on port 80 has a login; the API behind it does not. SSH listens on 9031. The web UI's `static/` directory is served without authentication too. Confirmed answering on the bench unit with no credentials", "confidence": "verified" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The REST API", "note": "Roughly eighty endpoints of plain, readable Express JavaScript with the surface documented in a spreadsheet inside the firmware itself, mounted per feature and reachable without credentials. Anything that wants to drive one of these boxes from OSC, AES70 or a control surface talks to this and needs no C, no firmware and no reverse engineering. It is also, for the same reasons, the platform's largest exposure." },
+        { "rank": 2, "item": "PLAY's media stack, within the display constraint", "note": "GStreamer 1.14.4, the Rockchip MPP plugins and `kmssink` are already on the rootfs, and Rockchip MPP is open source with no proprietary firmware dependency — so the decode and encode paths are reachable without anything from BirdDog. The binding constraint is not access, it is ownership: `PPApp` is DRM master, so the box shows the vendor application's output or somebody else's, never both." },
+        { "rank": 3, "item": "Nothing inside the fabric", "note": "On every model except PLAY the NDI codec is a block in a bitstream shipped inside the vendor package, reached through a vendor kernel driver. The bitstreams are unencrypted and name their part, which makes them legible and not useful — the design is the product, and there is no third-party path into it." }
+      ],
+      "verdict": "Hardware everywhere it earns its keep, and a plain SoC where it does not. The encoders are FPGA machines: a Zynq-7000 on the 1080p line and a Zynq UltraScale+ with a hard codec unit on the 4K line, with the NDI codec itself living in fabric behind a thin kernel driver — which is why what a 4K unit *is* (encoder or decoder, 1 G or 10 G) is chosen by loading a different bitstream rather than by setting a flag. PLAY inverts all of it: no programmable logic, a Rockchip RK3328 on an unmodified Firefly reference device tree, 2 GB of RAM and four Cortex-A53s at 1.392 GHz, hardware-decoding NDI|HX through the video unit while decoding full-bandwidth SpeedHQ in software on the same four cores. The asymmetry is not an accident — the measured encoder on that SoC tops out around 31 fps at 720p with no HEVC and no B-frames, which is precisely why BirdDog never built an encoder on one. Around all three platforms sits the same delivery chain: an encrypted container whose scope is the whole product line and every generation of it, an integrity check over a shell script, a model-name gate, and no signature verification at any point.",
+      "openQuestions": [
+        "**RK3328 or RK3318.** RK3318 is a cost-reduced bin of the same design with the same register map, and vendor images — including the device tree — are shared between them. Nothing in the firmware, and nothing readable from a running unit, distinguishes the two. Only the marking on the chip settles it, and the unit was not opened.",
+        "What full-bandwidth NDI **receive** actually sustains on PLAY. The send side was measured — SpeedHQ encode costs about 1.18 cores at 720p30, which scales to roughly 2.6 cores at 1080p30 — but the equivalent receive figure was never logged on stock firmware, and 1080p60 versus 2160p is a fourfold difference in what the product can honestly claim.",
+        "Which USB controller the PLAY's USB-A socket is wired to. The device tree enables the USB 2.0 OTG controller, the EHCI/OHCI host and a USB 3.0 dwc3 side by side; the socket enumerates devices, so one of them reaches it. This decides whether uncompressed capture above 720p is possible at all, and it is a screwdriver question, not a firmware one.",
+        "Whether Studio and Mini genuinely lack `birddog_speedhq.ko` on the device, or whether their 2020 update packs simply do not refresh a module that is already there. Absence from an overlay is not absence from a rootfs — the same mistake the GStreamer trap below records.",
+        "What the non-Xilinx `.bit` files under Studio R3's `etc/birddog-rev2/` are. They are in a different container, they are not Xilinx bitstreams, and they were not identified.",
+        "**PLAY Pro is entirely unknown.** BirdDog publish no firmware for it, so there is nothing to analyse — not the SoC, not whether it has fabric, not whether it shares the PLAY image."
+      ],
+      "traps": [
+        "**A GPU's physical base address, sitting in a sysfs path, is the sharpest Rockchip part discriminator available from firmware alone.** `/sys/devices/platform/ff300000.gpu/…` means `gpu@ff300000`, which is `rockchip,rk3328-mali` in mainline and nothing else: RK356x is `fde60000`, RK3399 `ff9a0000`, PX30 `ff400000`. A register map is a hard fact and a marketing name is not, so an address that leaked into a path in a startup script identified the silicon before any vendor metadata was found. The limit is worth knowing too — **RK3318 is indistinguishable**, because it is the same die and the same register map in a different cost bin. The technique identifies a design, never a part number.",
+        "**Grepping a rootfs for vendor names produces confident nonsense.** `integration` contains `tegra`; `cambandwidth` contains `amba`; a sweep for a Rockchip 2D engine hit repeatedly on web-UI assets in a binary that turned out not to link it at all. The Xilinx `.bit` header, by contrast, names the exact part, the design and the tool version in plain text at a fixed offset. Where an artifact self-identifies, a substring search is not a cheaper version of reading it — it is a different and worse method.",
+        "**\"No GStreamer\" was true of the application and false of the machine.** The conclusion came from the vendor binary's `DT_NEEDED` list, which is genuinely short — MPP, DRM, libndi. The rootfs it sits on ships GStreamer 1.14.4 with the full Rockchip MPP plugin set and `kmssink`, all unused by the product and all perfectly usable by anything else. An application-linkage finding bounds what *that program* does; it says nothing about what is installed. Check the filesystem before concluding something is absent.",
+        "**The PLAY locks its HDMI output to the first stream it sees and silently downscales everything after it.** A 2160p stream sent to a unit already locked at 1080p60 was scaled 2:1 with no error and no indication — fine gratings vanished, and the resulting measurement read as a legibility floor at 4K that does not exist. The device's own status endpoint went on reporting the original resolution throughout. Changing resolution needs the source torn down and the decoder restarted, not just a new stream. The wrong answer here was plausible, quantitative and reproducible, which is exactly what makes it dangerous.",
+        "**That same status endpoint is only trustworthy once it is locked.** While failing it reports a zero resolution, a zero frame rate and a chroma format of `4:2:2` regardless of the stream — a value the 4:2:0 test stream could never produce. A non-zero resolution is the only field in it that means anything."
       ]
     }
   ]

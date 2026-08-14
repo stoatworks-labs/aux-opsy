@@ -1,15 +1,80 @@
 ---
 import Base from '../layouts/Base.astro';
 import data from '../data/platforms.json';
+import { strandPhrase, lastUpdated } from '../lib/corpus';
 
 const { platforms, confidence } = data;
 const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !== 'reference');
+
+// `hardwareBasis` is absent on every platform analysed purely from files, which is
+// most of them — the column falls back to "None" rather than each entry carrying a
+// row that says nothing. The platforms that DO have one are named in the prose
+// below, so the exception can never quietly grow without the page admitting it.
+const onHardware = analysed.filter((p) => p.hardwareBasis);
+
+const site = Astro.site.href.replace(/\/$/, '');
+const pageUrl = `${site}/method/`;
+
+// The confidence vocabulary published as a DefinedTermSet.
+//
+// This is the single highest-leverage piece of structured data on the site. The
+// labels are what make a finding here mean something narrower than "aux-opsy says
+// X", and they are the first thing an automated summary drops. Publishing them as
+// terms with @ids gives anything consuming the pages a definition to point at
+// rather than an adjective to discard.
+const schema = [
+  {
+    '@type': 'DefinedTermSet',
+    '@id': `${site}/#confidence`,
+    name: 'Aux-opsy confidence labels',
+    description:
+      'The five labels attached to every technical claim on this site, strongest '
+      + 'first. A claim reproduced without its label states something this research '
+      + 'does not.',
+    url: `${pageUrl}#confidence`,
+    hasDefinedTerm: Object.entries(confidence).map(([id, c]) => ({
+      '@type': 'DefinedTerm',
+      '@id': `${site}/#confidence-${id}`,
+      termCode: id,
+      name: c.label,
+      description: c.note,
+      inDefinedTermSet: { '@id': `${site}/#confidence` },
+    })),
+  },
+  {
+    '@type': 'TechArticle',
+    '@id': `${pageUrl}#article`,
+    headline: 'Method & legal status',
+    description:
+      'How this reverse-engineering research was performed, the five scope boundaries '
+      + 'it observes, the EU and US legal basis for reverse engineering for '
+      + 'interoperability, and the confidence labelling scheme.',
+    url: pageUrl,
+    inLanguage: 'en-GB',
+    isAccessibleForFree: true,
+    dateModified: lastUpdated,
+    publisher: { '@id': `${site}/#organization` },
+    author: { '@id': `${site}/#organization` },
+    isPartOf: { '@id': `${site}/#website` },
+    mentions: { '@id': `${site}/#confidence` },
+  },
+  {
+    '@type': 'BreadcrumbList',
+    '@id': `${pageUrl}#breadcrumbs`,
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Aux-opsy', item: `${site}/` },
+      { '@type': 'ListItem', position: 2, name: 'Method & legal' },
+    ],
+  },
+];
 ---
 
 <Base
   title="Method & legal status — Aux-opsy"
   description="Why this research exists, how it was performed, what was deliberately not done, and the legal basis on which reverse engineering for interoperability proceeds."
   section="method"
+  schema={schema}
+  updated={lastUpdated}
 >
   <section class="band">
     <div class="wrap">
@@ -47,7 +112,7 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
           <h2>1. Purpose: understanding and interoperability</h2>
           <p>
             The purpose of this work is to understand how live production equipment is built —
-            digital mixing consoles and video switchers — and, where a project
+            {' '}{strandPhrase()} — and, where a project
             follows from that understanding, to obtain the information necessary for an
             independently created device or program to interoperate with existing equipment.
           </p>
@@ -110,7 +175,7 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
                   <tr>
                     <td class="k"><a href={`/platforms/${p.id}/`}>{p.manufacturer} {p.model}</a></td>
                     <td>{p.method}</td>
-                    <td>None</td>
+                    <td>{p.hardwareBasis ?? 'None'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -119,12 +184,31 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
 
           <div class="note warn">
             <p style="margin:0">
-              <strong>No console or switcher has ever been opened, connected to, or
-              modified.</strong> Every finding on this site was obtained from files. Nothing
-              has been validated against physical hardware, and nothing here should be relied
-              on for a repair, a modification or a purchasing decision.
+              <strong>On all but {onHardware.length === 1 ? 'one' : onHardware.length} of the
+              platforms above, no device has ever been opened, connected to or
+              modified</strong>{' '}— the third column says so per platform, and where it says <em>None</em> every
+              finding on that page came out of a file. Nothing on this site should be relied on
+              for a repair, a modification or a purchasing decision.
             </p>
           </div>
+
+          <p>
+            The exception{onHardware.length === 1 ? ' is' : 's are'} recorded rather than
+            glossed over, because it changes what the findings are worth:
+            {' '}{onHardware.map((p, i) => (
+              <>
+                {i > 0 && (i === onHardware.length - 1 ? ' and ' : ', ')}
+                <a href={`/platforms/${p.id}/`}>{p.manufacturer} {p.model}</a>
+              </>
+            ))}.
+            On {onHardware.length === 1 ? 'that platform' : 'those platforms'} we own units and
+            have run our own code on them, so some rows carry a fifth confidence label —
+            {' '}<span class="conf conf-measured">Measured</span>{' '}— meaning the figure was
+            read off a live device rather than inferred from an image. Everything <em>else</em>
+            {' '}on {onHardware.length === 1 ? 'that page' : 'those pages'} is still
+            file-derived and still labelled accordingly. Buying a unit does not retroactively
+            verify the static analysis.
+          </p>
         </section>
 
         <section id="terms">

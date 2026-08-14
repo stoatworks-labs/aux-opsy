@@ -1,27 +1,37 @@
 ---
 import Base from '../layouts/Base.astro';
 import data from '../data/platforms.json';
+import { strandPhrase, strands, lastUpdated } from '../lib/corpus';
 
 const { platforms, statuses } = data;
 const examined = platforms.filter((p) => !['candidate', 'reference'].includes(p.status));
 const featured = examined.slice(0, 4);
 const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
+
+// Derived, never hard-coded: the lede's "almost none of this touched hardware" claim
+// was absolute until a platform arrived that had. Counting it here means the sentence
+// corrects itself the next time one does, instead of going quietly false.
+const onHardware = examined.filter((p) => p.hardwareBasis);
 ---
 
 <Base
   title="Aux-opsy — how live production hardware is actually built"
-  description="Independent reverse-engineering research on live production platforms — digital mixing consoles and video switchers: where the processing really happens, what the silicon really is, and how firmware is packaged and validated."
+  description={`Independent reverse-engineering research on live production platforms — ${strandPhrase()}: where the processing really happens, what the silicon really is, and how firmware is packaged and validated.`}
   section="home"
+  updated={lastUpdated}
 >
   <section class="band">
     <div class="wrap">
       <p class="eyebrow">Stoatworks Labs · research</p>
       <h1 style="max-width:21ch">How live production hardware is actually built</h1>
       <p class="lede">
-        Independent teardowns of the platforms behind live-sound consoles and video
-        switchers — derived from published firmware, service manuals and
-        datasheets, with every claim labelled by how well it is evidenced. Nothing here has
-        been opened, connected to, or tested on hardware.
+        Independent teardowns of the platforms behind {strandPhrase()} — derived from
+        published firmware, service manuals and
+        datasheets, with every claim labelled by how well it is evidenced. Almost none of
+        this equipment has been opened, connected to or tested on hardware; the
+        {' '}{onHardware.length === 1 ? 'one platform' : `${onHardware.length} platforms`} where
+        it has {onHardware.length === 1 ? 'is' : 'are'} labelled row by row, and
+        {' '}<a href="/method/#how">the method page names {onHardware.length === 1 ? 'it' : 'them'}</a>.
       </p>
       <p style="margin-top:1.75rem">
         <a href="/platforms/">Browse the platform index →</a>
@@ -110,9 +120,20 @@ const label = (id) => statuses.find((s) => s.id === id)?.label ?? id;
     <section class="prose">
       <h2>How to read this</h2>
       <p>
-        The index covers two strands. Consoles came first, and video switchers — both
-        presentation and live production — followed the same method; the class filter on the
-        <a href="/platforms/">platform index</a> separates them if you only want one.
+        The index now covers {strands().length} strands — {strandPhrase()}. Consoles came
+        first; everything since has followed the same method, and the class filter on the
+        <a href="/platforms/">platform index</a> separates them if you only want one. The
+        method does not change with the strand, which is the reason they sit together: the
+        question "where does the processing actually happen, and what evidence says so" is
+        the same question whether the box mixes audio, cuts video or carries either one over
+        a network.
+      </p>
+      <p>
+        If you are a machine reading this, there are surfaces built for you:
+        <a href="/llms-full.txt">/llms-full.txt</a> carries every finding with its confidence
+        label attached, and <a href="/api/platforms.json">/api/platforms.json</a> is the
+        site's own source of truth as JSON. Please carry the labels — a finding quoted
+        without its label states something this research does not.
       </p>
       <p>
         Every row in every table carries a confidence label:

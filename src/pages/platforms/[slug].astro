@@ -1,6 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import data from '../../data/platforms.json';
+import { strandOf } from '../../lib/corpus';
 
 export function getStaticPaths() {
   return data.platforms.map((p) => ({ params: { slug: p.id }, props: { platform: p } }));
@@ -43,11 +44,39 @@ function fmt(s) {
   let out = s.replace(/`([^`]+)`/g, (_m, c) => `\u0000${spans.push(c) - 1}\u0000`);
   out = out.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
   out = out.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
+  // [text](/internal/path) — deliberately SITE-RELATIVE only. Entries cross-reference
+  // each other (the DM3's traps point at the DM7 that corrected them), which is worth
+  // having; letting a data file emit arbitrary hrefs is not, and an off-site citation
+  // belongs in `artifacts`, where it is visible as a source rather than buried in prose.
+  out = out.replace(/\[([^\]]+)\]\((\/[^)\s]*)\)/g, '<a href="$2">$1</a>');
   return out.replace(/\u0000(\d+)\u0000/g, (_m, i) => `<code>${spans[i]}</code>`);
 }
 
 const site = Astro.site.href.replace(/\/$/, '');
 const pageUrl = `${site}/platforms/${p.id}/`;
+
+// Related entries: same class first, then the rest of the same manufacturer. This is
+// the site's only internal link graph beyond the index — without it every detail page
+// is a leaf, which is bad for a reader comparing two platforms and worse for a crawler
+// trying to work out that these pages belong together.
+// Class and manufacturer alone leave the sole member of a class with no links at all
+// — which is the page that needs them most, since nothing else on the site points at
+// it either. Shared tags are the fallback: they are how "both of these are Zynq
+// bare-metal designs" gets expressed across two unrelated classes.
+const others = data.platforms.filter((o) => o.id !== p.id);
+const shareTag = (o) => o.tags.filter((t) => p.tags.includes(t)).length;
+// Last resort, for the sole member of a class that also shares no tags: everything in
+// the same strand. Weaker than the rungs above it, but a page with no way out is worse.
+const sameStrand = (o) => strandOf(o.class) === strandOf(p.class);
+
+const related = [
+  ...others.filter((o) => o.class === p.class),
+  ...others.filter((o) => o.class !== p.class && o.manufacturer === p.manufacturer),
+  ...others.filter((o) => shareTag(o) > 0).sort((a, b) => shareTag(b) - shareTag(a)),
+  ...others.filter(sameStrand),
+]
+  .filter((o, i, arr) => arr.findIndex((x) => x.id === o.id) === i)
+  .slice(0, 6);
 
 // TechArticle rather than Article: these are technical documentation about a
 // named product. `about` carries the product identity so the page can be
@@ -62,9 +91,18 @@ const schema = [
     url: pageUrl,
     inLanguage: 'en-GB',
     isAccessibleForFree: true,
+    // Both dates come from the entry's own `updated` field rather than from the build
+    // clock: rebuilding the site does not modify an entry, and claiming it did is the
+    // cheap freshness lie this site should be the last place to tell.
+    datePublished: p.updated,
+    dateModified: p.updated,
     publisher: { '@id': `${site}/#organization` },
     author: { '@id': `${site}/#organization` },
     isPartOf: { '@id': `${site}/#website` },
+    // Ties every detail page back to the catalogue, so a consumer that lands here
+    // can find the other 21 and the JSON without crawling.
+    isPartOfDataset: { '@id': `${site}/platforms/#dataset` },
+    keywords: p.tags,
     about: {
       '@type': 'Product',
       name: `${p.manufacturer} ${p.model}`,
@@ -95,6 +133,7 @@ const schema = [
   description={p.summary}
   section="platforms"
   schema={schema}
+  updated={p.updated}
 >
   <section class="band">
     <div class="wrap">
@@ -107,6 +146,15 @@ const schema = [
         {p.family !== '—' && <span class="tag">{p.family}</span>}
         {p.tags.map((t) => <span class="tag">{t}</span>)}
       </div>
+      <p class="entry-meta">
+        {/* The hardware line is stated up front rather than buried in the method
+            section, because it is the single fact that most changes what the rest
+            of the page is worth. */}
+        {p.hardwareBasis
+          ? <><strong>Hardware in our hands:</strong> {p.hardwareBasis}</>
+          : <><strong>Hardware in our hands:</strong> none — every finding below came out of a file.</>}
+        {p.updated && <> · Last updated <time datetime={p.updated}>{p.updated}</time></>}
+      </p>
     </div>
   </section>
 
@@ -116,6 +164,7 @@ const schema = [
         <p class="eyebrow" style="margin-bottom:.25rem">On this page</p>
         <ul>
           {sections.map(([id, label]) => <li><a href={`#${id}`}>{label}</a></li>)}
+          {related.length > 0 && <li><a href="#related">Related entries</a></li>}
         </ul>
       </nav>
 
@@ -291,11 +340,29 @@ const schema = [
           <div class="note warn">
             <p style="margin:0">
               <strong>Status of this entry.</strong> {statusMeta?.note}
-              {' '}Unless a row says otherwise, nothing on this page has been verified against
-              physical hardware.
+              {' '}{p.hardwareBasis
+                ? <>Rows labelled <span class="conf conf-measured">Measured</span> were read off
+                  a running unit; everything else on this page is derived from files and has
+                  not been checked against hardware.</>
+                : <>Nothing on this page has been verified against physical hardware — no unit
+                  of this platform has been opened, connected to or modified.</>}
             </p>
           </div>
         </section>
+
+        {related.length > 0 && (
+          <section id="related">
+            <h2>Related entries</h2>
+            <ul class="prose related">
+              {related.map((o) => (
+                <li>
+                  <a href={`/platforms/${o.id}/`}>{o.manufacturer} {o.model}</a>
+                  {' '}— <span style="color:var(--ink-2)">{o.class}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         <p style="margin-top:3rem"><a href="/platforms/">← Back to the platform index</a></p>
       </div>

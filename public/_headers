@@ -1,0 +1,33 @@
+# Cloudflare Workers static-assets header rules. Copied verbatim from public/ into
+# dist/ by the Astro build, and consumed (not served) by the assets runtime.
+#
+# WHY THIS FILE EXISTS: the site is `output: 'static'`, so every endpoint under
+# src/pages/*.ts is PRERENDERED TO A FILE at build time. The `headers` object in the
+# Response those routes return is therefore never sent — the asset server picks a
+# Content-Type from the file extension and nothing else. The CORS header on
+# /api/platforms.json was silently absent until this file was added.
+#
+# Keep the two in step: if you change a header in a route handler, change it here too,
+# or it will not take effect in production.
+
+/api/*
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=600, must-revalidate
+
+# Atom, not the text/xml the extension implies. Feed readers cope with text/xml, but
+# the correct type is what makes the <link rel="alternate"> in the head resolvable.
+/updates.xml
+  Content-Type: application/atom+xml; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=600, must-revalidate
+
+# The corpus files are meant to be fetched by agents, including from a browser.
+/llms.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=600, must-revalidate
+
+/llms-full.txt
+  Content-Type: text/plain; charset=utf-8
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=600, must-revalidate
