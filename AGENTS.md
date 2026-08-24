@@ -207,3 +207,10 @@ NAVY #0e2942   PAPER #fafaf8   ACCENT #7fa8ce
 `#7fa8ce` fails WCAG AA on paper, so light mode's `--accent` is the darkened same-hue
 `#235f92` and `#7fa8ce` survives only on the navy bands. This is the same deviation the main
 site makes, for the same reason.
+
+## Notes
+
+`docs/NOTES.md` carries this repo's working notes — current status, decisions
+already made, and the traps that have actually bitten. Read it before changing
+anything non-obvious. Cross-cutting fleet knowledge lives in
+[fleet-notes](https://github.com/stoatworks-labs/fleet-notes).
