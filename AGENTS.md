@@ -7,7 +7,7 @@ Read this before editing. See `README.md` for what the project *is*.
 
 **Verified in this repo:**
 
-- The site builds clean (26 routes, 25 in the sitemap) and every route renders.
+- The site builds clean (27 routes, 26 in the sitemap) and every route renders.
 - Search, status filter, class filter and all six sort orders were exercised in a real
   browser and produce correct results — including the year sort parking the undated entry
   (LOOM) last in both directions.
@@ -16,23 +16,31 @@ Read this before editing. See `README.md` for what the project *is*.
   processor`) each filter to exactly their one entry. The new "Recently updated" sort orders
   by `updated` and puts the four newest first. Search finds the new entries' silicon
   (`rk3328`, `vxworks`).
+- **2026-09-06: the tenth class (`Wireless microphone system`) was exercised by measuring the
+  cards, not by reading the count** — 23 boxes to 1, search `acn` to 1, reset to 23. That is
+  the check that caught `[hidden]` doing nothing (see the traps); the count agrees with
+  itself either way.
 - The `measured` confidence marker is the only filled chip and clears WCAG AA in both schemes
   — 6.02:1 light, 6.45:1 dark, checked by computing the ratio in the page.
 - Every detail page now has at least one outbound "Related entries" link (checked across all
-  22 built pages; the minimum is 1, on the MXCW).
+  22 built pages as of 2026-08-14; the minimum is 1, on the MXCW. The 23rd page, the QLXD4,
+  was checked on its own and links to the MXCW).
 - Light and dark both render correctly, with the navy band surviving in light mode.
 - **Live at `https://aux-opsy.com`** (and `www.`), deployed as a Cloudflare Worker serving
   static assets (not a Pages project — the fleet has none). Public repo at
   `github.com/stoatworks-labs/aux-opsy`.
 - Discovery stack verified at build: `/robots.txt` with content signals, `/sitemap-index.xml`
-  (25 URLs, and the non-HTML routes correctly excluded), `/llms.txt`, `/llms-full.txt`,
+  (26 URLs, and the non-HTML routes correctly excluded), `/llms.txt`, `/llms-full.txt`,
   `/api/platforms.json`, `/updates.xml` (parses as Atom), and JSON-LD on every page —
   `Dataset` + `ItemList` on the index, `TechArticle` + `BreadcrumbList` on each platform,
   `DefinedTermSet` for the confidence vocabulary on `/method/`.
 
-- The BirdDog entry is the first with hardware behind it. `hardwareBasis` on that entry is
-  what makes `/method/`'s third column non-empty and what the site's derived "almost none of
-  this touched hardware" sentences count.
+- **Six entries carry `hardwareBasis`** as of 2026-09-06 — BirdDog PLAY, Analog Way Midra
+  (a Pulse2), LiveCore (a NeXtage 16), LivePremier (an Aquilon C), the Yamaha QL1 (with its
+  Rio3224-D2) and the Shure QLXD4. That field is what fills `/method/`'s third column and
+  what every derived "what has touched hardware" sentence counts, so adding one rewrites
+  copy on three pages and in both text surfaces. It is still the worst field in the repo to
+  add falsely, and it is now the one most likely to be added casually.
 
 **Assumed / not verified:**
 
@@ -169,6 +177,14 @@ would destroy the site. The nominative-use position is stated on `/method/#trade
 
 ## Traps in this repo
 
+- **An author `display` beats `[hidden]`, and the index's filters depended on it.** Cards
+  are hidden with `card.hidden = true`, `.card` sets `display: block`, and an author rule
+  wins over the UA stylesheet's `[hidden] { display: none }` at any specificity — so every
+  filter and the search box updated the count and left all the cards on screen, live on the
+  site, until 2026-09-06. `global.css` now carries `[hidden] { display: none !important }`
+  above the component rules; keep it above anything that sets a display. And when checking a
+  filter, **measure the cards** — the count is derived from the same array the hiding loop
+  walks and agrees with itself whether or not the page changed.
 - **A `title` attribute wins the accessible-name computation over button text.** The status
   filter chips announced their entire tooltip ("A written teardown exists and its claims carry
   evidence citations") instead of "Documented". Fixed with an explicit `aria-label`; keep both

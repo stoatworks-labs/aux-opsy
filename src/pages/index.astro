@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import data from '../data/platforms.json';
-import { strandPhrase, strands, lastUpdated } from '../lib/corpus';
+import { strandPhrase, strands, lastUpdated, spell } from '../lib/corpus';
 
 const { platforms, statuses } = data;
 const examined = platforms.filter((p) => !['candidate', 'reference'].includes(p.status));
@@ -27,10 +27,11 @@ const onHardware = examined.filter((p) => p.hardwareBasis);
       <p class="lede">
         Independent teardowns of the platforms behind {strandPhrase()} — derived from
         published firmware, service manuals and
-        datasheets, with every claim labelled by how well it is evidenced. Almost none of
-        this equipment has been opened, connected to or tested on hardware; the
-        {' '}{onHardware.length === 1 ? 'one platform' : `${onHardware.length} platforms`} where
-        it has {onHardware.length === 1 ? 'is' : 'are'} labelled row by row, and
+        datasheets, with every claim labelled by how well it is evidenced. No unit on this
+        site has been opened, and most have never been connected to either; the
+        {' '}{onHardware.length === 1 ? 'one platform' : `${spell(onHardware.length)} platforms`} where
+        hardware was in our hands {onHardware.length === 1 ? 'is' : 'are'} labelled row by
+        row, and
         {' '}<a href="/method/#how">the method page names {onHardware.length === 1 ? 'it' : 'them'}</a>.
       </p>
       <p style="margin-top:1.75rem">

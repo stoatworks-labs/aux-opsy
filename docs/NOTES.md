@@ -21,6 +21,76 @@ so never hard-code a count in the pages).
 **Preview config `aux-opsy` on port 4531 was NOT in `~/.claude/launch.json`** despite this
 file previously claiming it was — added 2026-08-14. Verify before assuming it is there.
 
+## The 2026-09-06 pass — the control layer, six hardware bases, and a filter that never filtered
+
+Five entries moved and one arrived. **Midra, LiveCore and LivePremier** gained the control
+layer out of `openrcs-research` (the recovered Midra and LiveCore protocols),
+`webrcs-unleashed-research` and `mynah-research` (the undocumented Web RCS WebSocket, the
+AWJ leaf-read-only constraint, the A/B/C buffers, the silent empty-memory recall) and
+`aquilon-vpu-map` (the mixer model). **Yamaha QL1** gained the head-amp path over Dante from
+`Dante-BabelBox` and `dante-captures`. **Shure QLXD4** is new, from
+`RFutils/docs/SHURE-ACN.md`. Now **23 platforms, 27 routes, 26 sitemap URLs, 10 classes**.
+
+**`hardwareBasis` went from one platform to six**, and that is the change to check first if
+anything on the site reads oddly. Allan confirmed on 2026-09-06 that all of them are ours —
+the Aquilon C, the NeXtage 16, the Pulse2, and the QL1/Rio3224-D2 pair; the QLXD4 is the
+fifth device from that same lab capture. The rule from 08-14 still holds and was applied
+throughout: owning a unit does **not** upgrade the static analysis, so the QL1's firmware
+rows stay `verified` while the wire rows are `measured`, and `aquilon-pitch` — which only
+ever drove the simulator — contributed nothing to a `measured` row.
+
+**Every derived sentence pluralised correctly. Three hand-written ones did not**, which is
+the same failure the derived strands exist to prevent, one layer up:
+
+- the index lede said *"Almost none of this equipment has been opened, connected to or
+  tested on hardware"*. Nothing has ever been opened, so that half stays absolute; the
+  connected half is now a majority claim and says so;
+- `/method/`'s *"The exception**s are** recorded … because **it changes** what the findings
+  are worth"* — the verb was the one word in the sentence that had not been pluralised;
+- `/method/`'s *"we own units and have run our own code on them"* is untrue of the QLXD4,
+  which was observed passively and never transmitted to. Now "read, driven or captured them
+  with our own tools".
+
+Also added `spell()` to `corpus.ts`: the hardware count is prose in three places and
+"6 platforms" read like a spreadsheet.
+
+**The method page's own claims needed the same pass.** §3 says *"This is not black-box
+analysis"* — and the QLXD4 entry is precisely that: packets on the wire, no firmware
+obtained, nothing inspected, not one packet transmitted. The heading stays, because it is
+still true of the corpus; the exception is now named on the page and linked. §2's list of
+material examined and §4's claim both gained observation of our own equipment on our own
+network.
+
+## TRAP, and it was live on the site: `[hidden]` did nothing
+
+The platform index hides a card by setting `card.hidden = true` — and `.card` sets
+`display: block`, which is an **author** rule and therefore beats the UA stylesheet's
+`[hidden] { display: none }` regardless of specificity. Every filter chip and the search box
+were visually inert: the count said "1 of 23" while all 23 cards sat there. Confirmed
+present on `aux-opsy.com` (its `Base.*.css` has `.card{…display:block}` and no `[hidden]`
+rule at all), so it had been live since the cards were built. Fixed with
+`[hidden] { display: none !important }` above the component rules in `global.css`.
+
+**Why it survived a browser check on 2026-08-14:** the count is computed from the same
+filtered array the hiding loop walks, so it agrees with itself whether or not anything
+moves on screen. Reading the count is not checking the filter — measure the cards.
+Verified this time by geometry in the pane: class chip 23 → 1 card with a box, search
+`acn` → 1 (the QLXD4, found through its tags), reset → 23.
+
+## Where the boundaries landed on the two hardware protocols
+
+Boundary 2 ("no exploits, no modification instructions") is the live one for the QL1 entry.
+What went on the site: the head-amp path is unauthenticated, carries no session, is
+protected only by an additive checksum — integrity with no authenticity — and a message
+built to that rule and sent from an ordinary laptop was accepted and applied by a real
+Rio3224-D2. What deliberately did not: the ConMon envelope layout, the field offsets and the
+checksum formula. All three are in the public `Dante-BabelBox` spec for anyone who needs
+them; they are not what this site is for. Same line as BirdDog — *what the platform is, not
+how to make it do something else*.
+
+The Analog Way control material has no such tension: `openrcs-protocol` publishes it
+already, and a control protocol on a documented port is not a protection mechanism.
+
 ## The 2026-08-14 pass — four entries, a fifth confidence tier, derived strands
 
 Added **Yamaha DM7** ([dm7 re](https://github.com/stoatworks-labs/dm7-re/blob/main/docs/NOTES.md) (`dm7-re`)), **Allen & Heath AHM** ([ahm re](https://github.com/stoatworks-labs/ahm-re/blob/main/docs/NOTES.md) (`ahm-re`)),

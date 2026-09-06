@@ -68,6 +68,7 @@ const STRANDS: [RegExp, string][] = [
   [/ndi|video converter/i, 'video-over-IP converters'],
   [/conference/i, 'conference systems'],
   [/system processor|networked audio|audio-over-ethernet/i, 'installed audio systems'],
+  [/wireless microphone|microphone system/i, 'wireless microphone systems'],
 ];
 
 /** Which strand a single class belongs to, or the class itself if unmapped. */
@@ -91,6 +92,13 @@ export function strandPhrase(): string {
   const s = strands();
   return s.length < 2 ? (s[0] ?? '') : `${s.slice(0, -1).join(', ')} and ${s[s.length - 1]}`;
 }
+
+/** Small numbers are spelled out in this site's prose, and the hardware count is prose
+ *  in three places. Anything above ten is a digit, which is the point at which spelling
+ *  it stops reading like English. */
+export const spell = (n: number) =>
+  ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'][n] ??
+  String(n);
 
 /** The platforms where we actually owned the hardware. Derived, never counted by hand. */
 export const onHardware = analysed.filter((p) => p.hardwareBasis);

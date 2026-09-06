@@ -3,11 +3,16 @@
 > **AI-assisted project.** This codebase was created with [Claude Code](https://claude.com/claude-code).
 > The site builds and every page has been rendered and checked in a browser; the *technical
 > content* is drawn from private research repositories and, as the site itself says
-> throughout, almost none of it has been verified against physical hardware.
+> throughout, most of it has never been verified against physical hardware. The six
+> platforms where hardware was in our hands are labelled row by row and named on
+> `/method/`; nothing anywhere has been opened.
 
 The public face of Stoatworks Labs' reverse-engineering research into live production
 platforms — digital mixing consoles, video switchers, video-over-IP converters, conference
-systems and installed audio systems. A statement of method and legal position, plus a
+systems, installed audio systems and wireless microphone systems. **This list is the one
+place the site cannot derive it** (`strandPhrase()` does the rest), so it is the one place
+that goes stale — check it against `/llms.txt` after adding a class. A statement of method
+and legal position, plus a
 sortable, searchable index of the platforms examined, each with a detailed hardware and
 software architecture breakdown.
 
@@ -47,7 +52,7 @@ Edit `src/data/platforms.json` and nothing else. Each entry needs:
 - **`hardware` / `software` / `security`** — arrays of `{ label, value, confidence }`. Every
   row must carry a confidence level from the `confidence` map; there is no default and there
   should not be one.
-- **`hardwareBasis`** — *optional, and almost always absent.* Present only where we owned the
+- **`hardwareBasis`** — *optional, and absent on most entries.* Present only where we owned the
   hardware, in which case it says which unit and which firmware. It is what fills the
   "Hardware involved" column on `/method/`, and its presence is what unlocks the `measured`
   confidence label on that entry's rows. Leaving it off is the correct default; adding it

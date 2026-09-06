@@ -138,6 +138,14 @@ pre code { background: none; border: 0; padding: 0; }
 
 hr { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
 
+/* The index's filters and its search box hide a card by setting the `hidden` attribute,
+   and every one of them was inert: an author `display` — `.card { display: block }` —
+   beats the UA stylesheet's `[hidden] { display: none }` no matter the specificity, so
+   the count said "1 of 23" while all 23 stayed on screen. This rule has to sit above
+   every component that sets a display, and the `!important` is what makes it survive one
+   being added later. */
+[hidden] { display: none !important; }
+
 /* ---------- layout ---------- */
 
 .wrap { max-width: var(--wrap); margin-inline: auto; padding-inline: var(--gutter); }

@@ -1,7 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import data from '../data/platforms.json';
-import { strandPhrase, lastUpdated } from '../lib/corpus';
+import { strandPhrase, lastUpdated, spell } from '../lib/corpus';
 
 const { platforms, confidence } = data;
 const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !== 'reference');
@@ -146,7 +146,9 @@ const schema = [
             In every case the material examined was <strong>lawfully obtained and already in
             our possession</strong>: firmware update packages published by manufacturers for
             their own customers, software installed under a valid licence on our own machines,
-            service manuals, and publicly available component datasheets and standards.
+            service manuals, publicly available component datasheets and standards, and — on the
+            {spell(onHardware.length)} platforms named below — our own equipment, on our own
+            network.
           </p>
           <p>The techniques used were:</p>
           <ul>
@@ -155,7 +157,8 @@ const schema = [
             <li>listing and demangling symbol tables and C++ RTTI type names;</li>
             <li>statistical analysis of container files — entropy, byte histograms, index of coincidence, run-length structure;</li>
             <li>disassembling a limited number of functions to establish which offsets are compared against which constants;</li>
-            <li>cross-referencing all of the above against manufacturer service manuals and component datasheets.</li>
+            <li>cross-referencing all of the above against manufacturer service manuals and component datasheets;</li>
+            <li>on our own equipment only: reading a device's own control interface, and capturing traffic between two devices of ours on a port we mirrored ourselves.</li>
           </ul>
 
           <div class="table-scroll">
@@ -184,7 +187,7 @@ const schema = [
 
           <div class="note warn">
             <p style="margin:0">
-              <strong>On all but {onHardware.length === 1 ? 'one' : onHardware.length} of the
+              <strong>On all but {spell(onHardware.length)} of the
               platforms above, no device has ever been opened, connected to or
               modified</strong>{' '}— the third column says so per platform, and where it says <em>None</em> every
               finding on that page came out of a file. Nothing on this site should be relied on
@@ -194,7 +197,8 @@ const schema = [
 
           <p>
             The exception{onHardware.length === 1 ? ' is' : 's are'} recorded rather than
-            glossed over, because it changes what the findings are worth:
+            glossed over, because {onHardware.length === 1 ? 'it changes' : 'they change'} what
+            the findings are worth:
             {' '}{onHardware.map((p, i) => (
               <>
                 {i > 0 && (i === onHardware.length - 1 ? ' and ' : ', ')}
@@ -202,7 +206,8 @@ const schema = [
               </>
             ))}.
             On {onHardware.length === 1 ? 'that platform' : 'those platforms'} we own units and
-            have run our own code on them, so some rows carry a fifth confidence label —
+            have read, driven or captured them with our own tools, so some rows carry a fifth
+            confidence label —
             {' '}<span class="conf conf-measured">Measured</span>{' '}— meaning the figure was
             read off a live device rather than inferred from an image. Everything <em>else</em>
             {' '}on {onHardware.length === 1 ? 'that page' : 'those pages'} is still
@@ -224,6 +229,13 @@ const schema = [
             here come substantially from inspecting vendor binaries. Calling that black-box
             would be false.
           </p>
+          <p>
+            <strong>One entry is the exception, and says so on its own page.</strong> The
+            {' '}<a href="/platforms/shure-qlxd/">Shure QLXD4</a> page is entirely packets on the
+            wire: no firmware was obtained, nothing was inspected, and not one packet was ever
+            transmitted to the receiver. That page <em>is</em> black-box work by the definition
+            above, and it is labelled throughout as observation rather than derivation.
+          </p>
           <h3>This is not, in general, clean-room analysis</h3>
           <p>
             "Clean room" is a specific organisational control: one team examines the original
@@ -243,7 +255,8 @@ const schema = [
               Analysis of lawfully obtained, vendor-distributed binaries and documentation,
               performed to extract the <strong>ideas, functional interfaces and interface
               specifications</strong> necessary to understand the platform and to achieve
-              interoperability. Under both EU and US law those elements are not themselves
+              interoperability — together with observation of equipment we own, on our own
+              network. Under both EU and US law those elements are not themselves
               protected by copyright.
             </li>
             <li>
