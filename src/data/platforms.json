@@ -33,7 +33,7 @@
   "platforms": [
     {
       "id": "yamaha-ql1",
-      "updated": "2026-09-06",
+      "updated": "2026-09-07",
       "manufacturer": "Yamaha",
       "model": "QL1",
       "family": "QL series (CL/QL, codename \"Lime\")",
@@ -41,10 +41,10 @@
       "introduced": 2014,
       "status": "documented",
       "hardwareBasis": "A Yamaha QL1 and a Rio3224-D2 on our lab network, captured from a mirrored port on 2026-08-01 — 11.87 million frames over 183 s — plus one laptop on the same network that transmitted twelve hand-built control messages the stagebox accepted and acted on. Console and stagebox firmware versions were not recorded. The V5.91 firmware teardown is unchanged and remains file-only; no console was opened.",
-      "tags": ["Fixed-function DSP", "µITRON", "SH-4A", "Dante", "SHARC", "Head-amp control over ConMon", "Unauthenticated control path"],
+      "tags": ["Fixed-function DSP", "µITRON", "SH-4A", "Dante", "SHARC", "Head-amp control over ConMon", "Unauthenticated control path", "CLF console files"],
       "summary": "A nine-processor console whose mixing DSPs have no instruction memory at all — the audio path is fixed-function silicon configured through a register file.",
       "headline": "The five YSS919C \"DSP7\" mixing chips expose a 512-word register file and no program port. This was proven not just from the pin tables but from absence: every region of the 64 MB flash is accounted for and there is no DSP7 program image anywhere in it.",
-      "method": "Two bases, deliberately kept apart. The silicon and firmware findings are static analysis of the V5.91 USB firmware update package, cross-referenced against the published service manual's LSI pin descriptions — no console was opened and none of it has been checked against a machine. The second basis arrived on 2026-08-01: a QL1 and a Rio3224-D2 on our own lab network, captured from a mirrored port, from which the head-amp control path between console and stagebox was decoded — and then confirmed by transmitting a message built from that decoding, which the stagebox accepted and acted on. Nothing measured on the network says anything about the silicon, and the two bases are not mixed.",
+      "method": "Three bases, deliberately kept apart. The silicon and firmware findings are static analysis of the V5.91 USB firmware update package, cross-referenced against the published service manual's LSI pin descriptions — no console was opened and none of it has been checked against a machine. The second basis arrived on 2026-08-01: a QL1 and a Rio3224-D2 on our own lab network, captured from a mirrored port, from which the head-amp control path between console and stagebox was decoded — and then confirmed by transmitting a message built from that decoding, which the stagebox accepted and acted on. Nothing measured on the network says anything about the silicon, and the bases are not mixed. The third is the console file: `.CLF` files written by **QL Editor V5.8.1 running offline with no console attached**, with the patch table and the name layout located by controlled diffs — change exactly one thing, save again, compare.",
       "artifacts": [
         "`MQLP5_91.PGM` — 27.5 MB main-CPU image (console application + GUI resource pack)",
         "`QL-MD103.BIN` — 110 KB channel-name display sub-MCU image",
@@ -52,7 +52,8 @@
         "Service manual, LSI PIN DESCRIPTION section",
         "`QL Editor.app` — Premium Rack plugins shipped as unstripped x86_64 dylibs",
         "A port-mirrored capture of a QL1 paired to a Rio3224-D2 — pairing, patching, gain sweeps and phantom power on inputs 1–4, with 3,907 control messages in the 0.1 % of frames that are not Dante audio",
-        "A second capture of the write test: twelve hand-built gain messages transmitted from a laptop on the same network, and the stagebox's own status broadcasts echoing the new values back"
+        "A second capture of the write test: twelve hand-built gain messages transmitted from a laptop on the same network, and the stagebox's own status broadcasts echoing the new values back",
+        "`.CLF` console files saved from **QL Editor V5.8.1** offline — a baseline, two saves differing by a single patch point, and one differing by a single channel rename"
       ],
       "hardware": [
         { "label": "Main CPU", "value": "Renesas R8A77240D500BG — an SH7724 (SH-4A, SH-Mobile R2R) at IC101", "confidence": "verified" },
@@ -81,12 +82,17 @@
         { "label": "What the arrays carry", "value": "Head-amp gain is 32 × **int16 big-endian centi-dB**, confirmed by sweeping inputs 1, 2, 3 and 4 in isolation and watching exactly one array slot move each time; the sweep clamped at −6.00 dB, which is the Rio3224-D2's documented minimum. Phantom power is 32 × uint8 booleans, confirmed the same way, one slot per press. Input metering is 32 × uint8 broadcast by the stagebox at **31 Hz** — 3,461 messages in 110 s — and its scale is **not** calibrated: no known signal was ever injected, so the mapping to dBFS is unknown and it must not be presented as a meter", "confidence": "measured" },
         { "label": "On pairing, the console's state wins", "value": "At pairing the stagebox announced all 32 inputs at +36.00 dB; 60 ms later the console overwrote every channel with its own stored −6.00 dB, and the stagebox did not push back. Anything mirroring console state has to expect a full-array overwrite the moment a console connects, and must not read it as 32 individual user edits", "confidence": "measured" },
         { "label": "Eight more arrays with known shape and unknown meaning", "value": "The same opcode carries further per-channel arrays whose element count, addressing **and width** are now evidence-backed — 32 × uint8 and 32 × int16 among them, answered in full during pairing. What is not known is what they mean, because no such parameter was touched while recording: every value observed is a resting default. Two of them rest at values that make a second gain array and an 80 Hz high-pass tempting. Neither was ever seen to move", "confidence": "measured" },
-        { "label": "Discovery is asymmetric", "value": "The console answers read-only Audinate queries from an arbitrary host, returning its Dante name, its Brooklyn II module and the Audinate control application it runs. The stagebox answers **nothing** on any of those ports — and accepts and acts on Yamaha control from the same host. Audinate-level queries are therefore not a reliable way to enumerate Yamaha stageboxes; mDNS finds both, under their Dante names", "confidence": "measured" }
+        { "label": "Discovery is asymmetric", "value": "The console answers read-only Audinate queries from an arbitrary host, returning its Dante name, its Brooklyn II module and the Audinate control application it runs. The stagebox answers **nothing** on any of those ports — and accepts and acts on Yamaha control from the same host. Audinate-level queries are therefore not a reliable way to enumerate Yamaha stageboxes; mDNS finds both, under their Dante names", "confidence": "measured" },
+        { "label": "The console file is not the modern Yamaha container", "value": "CL and QL Editor ship **no parameter descriptors at all**, and a `.CLF` is not the `#YAMAHA MBDF` container the DM3, DM7 and TF share: it is flat binary, no compression and no archive, 117,508 bytes for a QL5 default state, and its header names the product and the editor build in the clear (`QL [OSX, 5.8.1.27]`). The file formats split exactly where the firmware does — this generation is a different architecture, and it writes a different kind of file", "confidence": "verified" },
+        { "label": "The input patch is one byte per channel, contiguous", "value": "Located by two controlled diffs in the offline editor: moving one channel to a Dante source changed **two bytes** in a 117 KB file, and moving a second channel eight further along changed a byte eight positions further on. One byte per channel, no stride, no indirection — the whole patch table is a flat run", "confidence": "verified" },
+        { "label": "Source encoding, exactly as the bytes have it", "value": "`0x01`–`0x40` are Dante 1–64; `0x41`–`0x48` are local inputs 1–8; `0xc1`–`0xd8` are local inputs 9–32. **The split between `0x41`–`0x48` and `0xc1` upward, for what the console presents as one continuous range of 32 inputs, is not explained** — it is recorded because it is what the file says, not because a formula was found. \"Simplifying\" it to a single base plus channel number is right for eight channels and wrong for twenty-four. The picker's other sources — slots, effects returns, playback and none — are unmapped", "confidence": "verified" },
+        { "label": "Channel names are stored four characters at a time", "value": "A name is not contiguous: the first four characters sit in one block and the next four **384 bytes further on**, at 96 channels per block, across two blocks — so eight characters maximum, and the third block is different data entirely. Every default name on this console is exactly four characters (`ch 1` … `ch96`), which means a contiguous four-byte read decodes every default file perfectly and truncates every name anyone would actually type", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image signing", "value": "None found", "confidence": "inferred" },
         { "label": "Encryption", "value": "None — the package is plainly structured and its components are directly readable", "confidence": "verified" },
-        { "label": "The head-amp control path has no authentication", "value": "It is multicast on the control network, carries no credential and no session, and is protected only by an **additive checksum over the block** — integrity with no authenticity in it, the same shape as this manufacturer's unsigned firmware packages. A message built to that rule and transmitted from an ordinary laptop on the same network was accepted and applied by the stagebox, which echoed the new gain back on its own status broadcast. The device never NAKs, so a refusal and a framing error look identical from outside. How such a message is constructed is deliberately not recorded here", "confidence": "measured" }
+        { "label": "The head-amp control path has no authentication", "value": "It is multicast on the control network, carries no credential and no session, and is protected only by an **additive checksum over the block** — integrity with no authenticity in it, the same shape as this manufacturer's unsigned firmware packages. A message built to that rule and transmitted from an ordinary laptop on the same network was accepted and applied by the stagebox, which echoed the new gain back on its own status broadcast. The device never NAKs, so a refusal and a framing error look identical from outside. How such a message is constructed is deliberately not recorded here", "confidence": "measured" },
+        { "label": "The console file carries a checksum", "value": "Every edit moved one or two bytes near `0x010039` and moved them differently each time, with nothing else in a 117 KB file changing. That is a checksum: harmless for reading, and a hard blocker for ever writing a console file, since an assembled file with a stale value may simply be refused and there is no way to find out without a console. It has not been solved and nothing here attempts it. It sits a few bytes before an `MMS` marker — the namespace of the *other* Yamaha format — which is an observation and not a link", "confidence": "verified" }
       ],
       "programmable": [
         { "rank": 1, "item": "Mini-YGDAI slot card", "note": "The cheapest route to putting custom DSP in the audio path with no console modification at all. Host aperture 0xBA002000 + (slot << 11), 16-bit port on A10..A1." },
@@ -101,32 +107,38 @@
         "**The firmware teardown is still unchecked against a physical console.** A QL1 and its stagebox were captured on our own network, but on their control network — nothing in the V5.91 image analysis above was confirmed on the machine, no console was opened, and the two bases on this page should not be read as one.",
         "What the remaining head-amp arrays mean. Their element counts, addressing and widths are evidence-backed and every observed value is a resting default. Mapping them is a ten-minute job with the hardware in front of you — change one parameter at a time on one input, with a pause between each, and each will light up exactly one array — and it has not been done.",
         "Whether one 32-slot array covers every input, or the arrays are banked. Repeating a single-parameter change on input 9 answers it in a minute; the capture predates the question.",
-        "The metering scale. The meter array's floor and peak were observed, but no calibrated signal was ever injected, so it has a range and no unit."
+        "The metering scale. The meter array's floor and peak were observed, but no calibrated signal was ever injected, so it has a range and no unit.",
+        "The rest of the patch source table. Slots, effect returns, playback and the null source are all offered by the editor and none is mapped; one more controlled diff per source class would extend the table, and a diff on a channel above 32 would establish its length.",
+        "Whether a CL-written file really is the same format. QL Editor writes `.CLF`, the same extension CL Editor's save panel offers, so one adapter should cover both — an expectation from a file extension, not a finding, and no CL-written file has been examined."
       ],
       "traps": [
         "The image load base is 0x8803BF80, not 0x88000000. The wrong value looks entirely plausible and silently yields almost no valid cross-references.",
         "Never attribute an MMIO constant from string-pool proximity. Doing so produced a claim that 0xBA002000 was the DSP7 window when it is the slot aperture — published, then retracted.",
         "Trusting the control block's own length field. An earlier pass took it as authoritative and recorded several arrays as never populated — they had in fact been answered in full. A device answering a read request **echoes the query's length unchanged and appends the data past the boundary that length implies**, so a parser that trusts it sees an empty reply and silently discards the payload. The checksum is what settles the real end of a block: across 3,907 captured messages, none validated under the wrong boundary.",
-        "Reading a resting default as a meaning. One unmapped array sits at exactly the value the gain array holds at rest, which makes \"second gain array\" irresistible; another sits where an 80 Hz high-pass would. Neither was ever observed to move, and a value that never changes proves nothing about what it is."
+        "Reading a resting default as a meaning. One unmapped array sits at exactly the value the gain array holds at rest, which makes \"second gain array\" irresistible; another sits where an 80 Hz high-pass would. Neither was ever observed to move, and a value that never changes proves nothing about what it is.",
+        "Trusting the strip label after a patch change. QL Editor raises a confirmation dialog whose default is **No**, and the strip label updates before it is answered — so the first attempt looked exactly like a successful edit and the two saved files came out byte-identical. If a diff shows nothing, check the change actually stuck before concluding the format does not store it.",
+        "Deriving the name field from a default file. Every default name is exactly four characters, so a four-byte contiguous read is correct on every file anyone has lying around and wrong on every file anyone would save. Only a rename exposed the 384-byte split; no amount of staring at a default file would have."
       ]
     },
 
     {
       "id": "yamaha-dm3",
-      "updated": "2026-08-14",
+      "updated": "2026-09-07",
       "manufacturer": "Yamaha",
       "model": "DM3",
       "family": "DM series",
       "class": "Digital mixing console",
       "introduced": 2023,
       "status": "partial",
-      "tags": ["Linux", "Named-component archive", "Dante", "FPGA", "Register-configured DSP"],
+      "tags": ["Linux", "Named-component archive", "Dante", "FPGA", "Register-configured DSP", "MBDF scenes", "Self-describing payload"],
       "summary": "Nine years newer than the QL and sharing almost nothing with it but the parameter framework — and, crucially, the same DSP philosophy: the signal path is fixed-function on both, however different the host looks.",
       "headline": "The update package is a named-component archive (`#YAMAHA MBDFArchive`) carrying a full Linux rootfs, and the installer is a plain bash script with no checksum ceremony and no signature. The 3.8 MB component filed under `DSP/` looks like a loadable DSP image and is not one \u2014 it is **supervisor MCU firmware plus coefficient tables**, so the audio silicon is register-configured exactly as on the QL.",
-      "method": "Static analysis of the V3.00 firmware package (167 MB) and the macOS DM3 Editor. Nothing has been tested on hardware.",
+      "method": "Static analysis of the V3.00 firmware package (167 MB) and the macOS DM3 Editor. Nothing has been tested on hardware. The scene-format findings have their own basis and are kept apart from the firmware ones: a record parser derived from a **publicly downloadable Yamaha preset pack** for the TF series, then run unchanged against the factory scenes the DM3 Editor itself ships, and checked against the editor's own parameter descriptors.",
       "artifacts": [
         "`DM3_firmware_V3.00.bin` — 167 MB, eleven named components",
-        "`DM3 Editor.app` (macOS)"
+        "`DM3 Editor.app` (macOS)",
+        "**DM3 Editor V3** — 21 parameter descriptors under `Resources/Descriptor/mms_*.xml`, 15 factory `.dm3s` scenes and 263 `.dm3p` presets, all shipped with the free editor",
+        "Yamaha's published Audix QuickPro preset pack for the TF series — 28 `.tfp` files, a public download, and the sample set the container layout was derived from and validated against"
       ],
       "hardware": [
         { "label": "Application processor", "value": "Runs a Linux userland — component 1 is an 88 MB rootfs tarball", "confidence": "verified" },
@@ -139,7 +151,11 @@
         { "label": "Container format", "value": "`#YAMAHA MBDFArchive` — magic, a 16-byte model string at `0x24`, then a fixed-size identifier field, then `#FIRMWARE` records of five BE u32 fields, three NUL-terminated strings (path / description / version) and a zlib payload, terminated by `#END`. Payloads were located by scanning forward to the zlib header rather than by trusting the length field, which was never fully decoded. See [the DM7](/platforms/yamaha-dm7/) for a field-by-field derivation of the same container", "confidence": "verified" },
         { "label": "Main application", "value": "`app_console.tgz`, 64.8 MB inflated, V3.00", "confidence": "verified" },
         { "label": "Installer", "value": "A bash script. Untars to /tmp/update, walks /yamaha/firmware.new/, compares each component's version file against the installed one and copies only what changed, running a per-component `<name>.sh` hook if present", "confidence": "verified" },
-        { "label": "Bootloader", "value": "Shipped as an updatable component — `app_bootloader.tgz`, V1.03", "confidence": "verified" }
+        { "label": "Bootloader", "value": "Shipped as an updatable component — `app_bootloader.tgz`, V1.03", "confidence": "verified" },
+        { "label": "Scenes and presets ride the firmware's own container", "value": "The same `#YAMAHA MBDF…` container carries firmware archives, channel presets, scenes, list backups and user accounts as separate subtypes. The evidence that this is one family rather than a resemblance: a record parser derived from the TF **preset** pack walked a DM3 **scene** — a different subtype and a different model — with no changes at all. Records are a tag, a field name, a target naming an object type and index, and a payload, padded to a four-byte boundary and terminated by an `#END` tag", "confidence": "verified" },
+        { "label": "The payload describes itself", "value": "The payload is not an opaque packed blob: it carries its own schema inline, a block of collection and parameter records followed by values packed to that layout. Walking the schema of a real DM3 factory scene yields **exactly 207 collections and 494 parameters** — precisely what the editor's own `mms_Mixing.xml` declares — and the value block begins exactly where the walk ends. Two independent sources agreeing with nothing fitted between them is what makes this trustworthy rather than a plausible story", "confidence": "verified" },
+        { "label": "Field layout is per-model and has to be read, never assumed", "value": "The DM3's input-channel record is **473 bytes × 16** with the patch field at offset 100 and **four bytes** wide; the TF's is 515 × 40 with a **one-byte** patch at the same offset. Offsets are only correct if they are computed by summing each preceding collection's size × array length in document order and then looked up by name — the field's position is not a constant of the format", "confidence": "verified" },
+        { "label": "A preset is not a scene", "value": "Worth keeping straight, because they share a container and an extension convention: a `.dm3p` preset holds one channel strip and has no patch, no routing and no channel-name table, while a `.dm3s` scene holds console-wide state. Only the scene can produce a patch list", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image signing", "value": "None — the installer performs no signature check", "confidence": "verified" },
@@ -155,24 +171,27 @@
         "Which silicon actually performs the mixing, and how it is configured. `DSP_V121.bin` boots the supervisor MCUs in front of it, not the part itself.",
         "The FPGA part has not been identified.",
         "What the fixed-size identifier field after the model string contains. The DM3 image is no longer in our possession, so it cannot be re-derived here.",
-        "No board has been inspected and no claim has been checked on hardware."
+        "No board has been inspected and no claim has been checked on hardware.",
+        "What the patch source codes mean. The DM3's patch word reads as an index in the high byte with a port type below it, two values have been seen, and none of it has ever been checked against a console's own patch screen. The field is located and its values are opaque — which is the honest state to leave it in rather than naming ports from two samples.",
+        "Whether the four-byte-boundary padding in the container is really alignment. Every sample pads by exactly one byte, which fits alignment and fits equally a length that excludes a terminator. A single sample whose payload length falls elsewhere modulo four would settle it, and none has turned up."
       ],
       "traps": [
         "**A component filed under `DSP/` is not evidence that the DSP is loadable, and this page asserted for a week that it was.** `DSP_V121.bin` is 3.8 MB, is named `DSP`, and is genuinely boot-loaded at update time by `dsp_initPowerOnBootAll` — every surface signal says *loadable DSP image*. It is several Cortex-M images plus coefficient tables. The tell is the first word, `0x200081B8`: a Cortex-M initial stack pointer, not DSP code. The published verdict here was the exact inverse of the finding until 2026-08-14, and the underlying research had already reached the right answer — the error was in the transcription onto this site, which read the first half of the argument and stopped before the correction.",
         "**Size is not content.** Real content is \u2248 1.3 MB of that 3.8 MB partition; the remainder is zero padding, and quoting the partition size makes the payload sound three times more substantial than it is.",
-        "**The word \"digest\" was assumed, not derived.** A fixed-size field after the model string was recorded here as a 16-byte digest at `verified` confidence. Nothing had checked it against the image, and the [DM7](/platforms/yamaha-dm7/) derivation of the same container family found a 20-byte identifier that is not a digest of anything. A field whose *size* is observed and whose *meaning* is guessed is `unknown`, not `verified`."
+        "**The word \"digest\" was assumed, not derived.** A fixed-size field after the model string was recorded here as a 16-byte digest at `verified` confidence. Nothing had checked it against the image, and the [DM7](/platforms/yamaha-dm7/) derivation of the same container family found a 20-byte identifier that is not a digest of anything. A field whose *size* is observed and whose *meaning* is guessed is `unknown`, not `verified`.",
+        "Hard-coding one model's field widths. Reading the TF's one-byte patch field as the DM3's four-byte word produced a column of plausible zeros rather than an error — the failure mode of a packed format is not a crash, it is a decode that looks fine. Sum the descriptor, look fields up by name, and check the summed total against the declared record size."
       ]
     },
     {
       "id": "yamaha-dm7",
-      "updated": "2026-08-14",
+      "updated": "2026-09-07",
       "manufacturer": "Yamaha",
       "model": "DM7",
       "family": "DM series (codename \"hagoromo\")",
       "class": "Digital mixing console",
       "introduced": 2023,
       "status": "partial",
-      "tags": ["Linux", "i.MX8M Mini", "Named-component archive", "XML parameter model", "SHARC", "Dante"],
+      "tags": ["Linux", "i.MX8M Mini", "Named-component archive", "XML parameter model", "SHARC", "Dante", "MBDF presets"],
       "summary": "Not one console CPU but a small cluster of identical i.MX8M Mini computers running one Linux rootfs in four roles — and the only platform here that ships its entire mixer parameter model as plain XML.",
       "headline": "`app/Descriptor/mms_*.xml` — 27 files, 1,701 collections, 2,693 parameters — declares every parameter's C type, array dimension, minimum, maximum, default and step, and every collection's packed `datasize`. That describes the console's binary state layout, not merely its parameter names, and it ships in a downloadable update. The audio itself is off-CPU on Yamaha SSP3 DSPs and a SHARC, exactly as the QL's was.",
       "method": "Static analysis of the public firmware image `DM7_firmware_V1.75.bin` (release V1.75, main system R1.02): a walk of the container format, extraction of the Linux root filesystem and console application, a C++ RTTI type-name census of the stripped application binary, and disassembly of a small number of functions. No hardware was involved and no console was opened.",
@@ -181,7 +200,8 @@
         "`app_console.tar.xz` V1.75 — the console application: three role binaries, 67 plugin `.so`, 27 XML descriptors",
         "`rootfs-DM7-2026-01-29-…tar.xz` R1.02 — the arm64 Linux root filesystem",
         "`DOM` 4.2.8.7 — a nested `#YAMAHA MBDFArchive` carrying its own kernel, initramfs, `dom.dtb` and three Xilinx bitstreams",
-        "`installer/install_script` R0.20 — the update procedure, in plain bash"
+        "`installer/install_script` R0.20 — the update procedure, in plain bash",
+        "**DM7 Editor** — 27 parameter descriptors and 303 `.dm7p` presets shipped with the free editor. No factory scenes: this is the one model in the family whose console-wide state file has not been read"
       ],
       "hardware": [
         { "label": "Application processor", "value": "NXP i.MX8M Mini (`fsl-imx8mm`), arm64 Cortex-A53 — from the device trees, `/etc/os-release` and `/boot/imx-boot-eMMC_dm7_20231128.bin`", "confidence": "verified" },
@@ -210,7 +230,9 @@
         { "label": "SHARC algorithm code", "value": "Not present anywhere in the image. Established by scanning all three application binaries, both Perseus libraries and every device member — 17 files, roughly 150 MB — for ADSP-214xx loader block chains, which finds none. There is also no NAIO firmware member in the update at all", "confidence": "verified" },
         { "label": "Mixing coefficient layer", "value": "`Mix1000DSP` (213 recovered types) is the SSP3-side layer and names the whole mixer signal path, with array dimensions readable from its template arguments — 32 in-ports, 16 and 4 out-ports, a 20-tap port delay, a 32 × 8 port filter. It sits on a generic `DspFramework` whose class names are shared with the DM3", "confidence": "verified" },
         { "label": "Installer", "value": "Plain bash. For each member it compares a `version` *file* against the installed copy, deletes and re-copies on mismatch, runs an optional per-member hook to flash the device, repeats the procedure for each mounted bay, and returns early on a control-surface CPU. About a third of the script is a recovery branch for one shipped root-filesystem bug", "confidence": "verified" },
-        { "label": "Shared codebase with the DM3", "value": "`SystemSetting.ini` is headed \"DM3シリーズ本体用\" — for the DM3 series. Its `ApplicationType` key enumerates `firmware`, `fader_iqc`, `editor` and `emulator`, so the same binary lineage runs off-console, and `UseMMSExplorer` names a built-in browser over the parameter tree that ships switched off", "confidence": "verified" }
+        { "label": "Shared codebase with the DM3", "value": "`SystemSetting.ini` is headed \"DM3シリーズ本体用\" — for the DM3 series. Its `ApplicationType` key enumerates `firmware`, `fader_iqc`, `editor` and `emulator`, so the same binary lineage runs off-console, and `UseMMSExplorer` names a built-in browser over the parameter tree that ships switched off", "confidence": "verified" },
+        { "label": "The shipped parameter model predicts the file layout", "value": "The XML above is not only a description of the running console — it is the decoder for what the console writes. The DM7's input-channel record is declared **1,785 bytes × 120**, with a **nine-byte** input-patch field at offset 93 and the signal selector ahead of it: a different shape from the DM3 and TF pair, which put a patch field at offset 100 and differ from each other in its width. Same container across the family, different layout in every model", "confidence": "verified" },
+        { "label": "The one model whose declared size does not add up", "value": "Summing each collection's size × array length in document order gives **1,784 against a declared 1,785**, so there is a padding byte somewhere in the record and its position is not stated. The DM3 and TF sum exactly, so a decoder written and tested against those two would never discover the discrepancy — it would simply read every DM7 field after the padding one byte early", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image signing", "value": "None. Neither the container nor `installer/install_script` carries or checks a signature", "confidence": "verified" },
@@ -235,7 +257,9 @@
         "The coefficient block format the plugin side emits is documented nowhere in the image, and it is the real ceiling on the plugin route. So is whether a plugin configuration transfer can introduce new SHARC program code or only reconfigure resident kernels.",
         "The 20-byte archive-header id and the `kind` field (`8` versus `12`) are both undecoded; `kind` correlates loosely with unpack-versus-flash but the `installer` member breaks the pattern.",
         "The DSP wire format, the FPGA register maps and the bay synchronisation protocol are untouched.",
-        "No claim here has been checked against a DM7. One pass, one firmware image, no hardware."
+        "No claim here has been checked against a DM7. One pass, one firmware image, no hardware.",
+        "Where the DM7's padding byte sits. The record sums one byte short of its declared size, and until that is located every field beyond it is suspect on this model alone.",
+        "What a DM7 scene looks like. The editor ships 303 presets and no scenes, so the console-wide state — the file a patch list would come from — has not been seen for this model, only for its smaller siblings."
       ],
       "traps": [
         "The container's section alignment is 4 bytes, not 2. A 2-byte assumption walks the first three sections correctly and then desynchronises at the `NAB` member onto a plausible-looking wrong magic. Validate the walk by landing exactly on `#END`, never on the first few hops.",
@@ -248,21 +272,22 @@
 
     {
       "id": "allen-heath-sq5",
-      "updated": "2026-08-14",
+      "updated": "2026-09-07",
       "manufacturer": "Allen & Heath",
       "model": "SQ-5",
       "family": "SQ series",
       "class": "Digital mixing console",
       "introduced": 2018,
       "status": "documented",
-      "tags": ["FPGA mixing", "Zynq-7000", "Bare metal", "AMP", "No signing"],
+      "tags": ["FPGA mixing", "Zynq-7000", "Bare metal", "AMP", "No signing", "NVRAM show images", "Checksummed"],
       "summary": "A 55 MB firmware image that contains none of the mixer. The audio path lives in FPGA fabric behind an undocumented AXI register map — and the fabric has now been opened far enough to read a pan-law table out of it.",
       "headline": "The update package is 55 MB of ARM image and 2.5 MB of bitstream, and the 2.5 MB is the mixer. What looked like 40 MB of UI artwork also turned out to hold **two more complete FPGA bitstreams**, and the mixer's own fabric has given up the first data recovered from inside this console: a constant-power crossfade table, decoded twice by independent paths to the same bits.",
       "method": "Static analysis of a single vendor firmware update file, extended into the FPGA fabric itself. No hardware was inspected and nothing here was run on a console. The image was re-obtained in August 2026 and the container format re-verified against it, so every claim below is now re-derivable — an earlier version of this page recorded the image as lost. The fabric work goes bitstream → FASM → netlist → simulator, using Project X-Ray's bit-to-feature database and `fasm2bels`; the parts of that route which touch this console were run end to end, and the general route is described on the [method](/method/) page.",
       "artifacts": [
         "`SQ-5UPG_1_6_3r6268.bin` — three records, no compression, no encryption",
         "`SQuMixFPGA.bit` — the 2.5 MB mixer bitstream, carved from the package: byte-swapped for the Zynq PCAP path and Vivado-compressed",
-        "Two Artix-7 bitstreams carved out of the region this page used to call artwork — the device-side images the console pushes to its remote I/O boxes"
+        "Two Artix-7 bitstreams carved out of the region this page used to call artwork — the device-side images the console pushes to its remote I/O boxes",
+        "`NVDATA.DAT` and `SCENE001.DAT` written by **SQ MixPad V1.6.0 running offline as an SQ-7** — two 128 KiB NVRAM images, and the controlled diffs taken across a single patch change"
       ],
       "hardware": [
         { "label": "SoC", "value": "Xilinx Zynq-7000 XC7Z020 — proven from the bitstream's IDCODE configuration packet (30018001 → 03727093), not inferred", "confidence": "verified" },
@@ -288,14 +313,19 @@
         { "label": "CPU1", "value": "`sQu_USB` at 0x20100000 — SQ-Drive: USB host, FAT, WAV. Directory layout /AHSQ/USBRec, /AHSQ/Scenes, /AHSQ/Shows appears verbatim", "confidence": "verified" },
         { "label": "Container header", "value": "0x70 (112) bytes, computed as next_offset − this_offset − payload_len and confirmed independently at both gaps. It is not read from any field", "confidence": "verified" },
         { "label": "Payload format", "value": "Despite `.elf` names the payloads are raw ARM32 images, each with a 16-byte preamble; byte 16 onward is the ARM exception vector table", "confidence": "verified" },
-        { "label": "Code fraction", "value": "Only ~10–16 MB of the 55 MB host image is code. From 16 MB on it compresses to 9–27%, i.e. uncompressed artwork and fonts", "confidence": "verified" }
+        { "label": "Code fraction", "value": "Only ~10–16 MB of the 55 MB host image is code. From 16 MB on it compresses to 9–27%, i.e. uncompressed artwork and fonts", "confidence": "verified" },
+        { "label": "What the console writes to disk", "value": "No container at all: flat, fixed-size binary **NVRAM images**, one per file, each exactly 128 KiB — `NVDATA.DAT` for global and setup state, `SCENE001.DAT` and its siblings for scenes. Both open with a similar 20-byte header differing in a single leading type tag, and a scene carries its name as text a few bytes in. This is a memory image written to disk rather than a document format, which is consistent with the bare-metal architecture above", "confidence": "verified" },
+        { "label": "The input patch is global, not scene data", "value": "Established by controlled diff in MixPad offline: changing one input's socket moved **five bytes, all of them in `NVDATA.DAT`**, and the scene file did not change at all. So a patch list must be read from the global image, and recalling a scene does not repatch the console. The Avantis behaves the same way for the same reason, which makes it worth expecting across the manufacturer's range", "confidence": "verified" },
+        { "label": "Channel state is a fixed-stride record array", "value": "The patch byte is not in a flat table — it sits inside a per-channel record at a **336-byte stride**, as a 0-based socket index. The array runs to **122 records**, well past the input channels and on into stereo inputs and mix objects at the same stride, with nothing in the file marking where one kind of object ends and the next begins", "confidence": "verified" },
+        { "label": "Names are not in the channel record", "value": "Of the 336 bytes in a record, 22 fall in the printable range and none of them is text, so the channel name lives in a separate table that a default show leaves empty. It has not been located, and MixPad appears not to expose channel naming at all — tried on the strip name button, the selected-channel name, press-and-hold, right-click and the strip-assign grid. That is an absence of evidence rather than a finding, and a show saved off a real console with named channels would settle it", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image signing", "value": "None. No RSA, SHA or AES strings anywhere in either image", "confidence": "verified" },
         { "label": "Update validation", "value": "CRC only, and the variant was not identified — `Error in firmware header`, `VerifyFlash Expected CRC to be 0x%lx, but calculated 0x%lx`", "confidence": "verified" },
         { "label": "Bitstream encryption", "value": "Not encrypted. The CTL0 write is 0x00001501 with the DEC bit (bit 6) clear and no key-load sequence, so the bitstream is analysable", "confidence": "verified" },
         { "label": "Recovery", "value": "A/B image banks with Zynq multiboot. The update overwrites the inactive bank; the first-stage bootloader is not in the update file and is not protected by the A/B scheme", "confidence": "verified" },
-        { "label": "Entitlement", "value": "An entitlement mechanism exists and was identified. Analysis stopped there — see the methodology page", "confidence": "verified" }
+        { "label": "Entitlement", "value": "An entitlement mechanism exists and was identified. Analysis stopped there — see the methodology page", "confidence": "verified" },
+        { "label": "The show image carries a four-byte checksum", "value": "The last four bytes of `NVDATA.DAT` change with every edit. Harmless for reading and a hard blocker for writing: a file assembled with a stale checksum may simply be refused, and there is no way to find out without a console. The Yamaha `.CLF` is in exactly the same position — two unrelated manufacturers, the same integrity check with no authenticity in it, and the same consequence for anyone hoping to write a show file rather than read one", "confidence": "verified" }
       ],
       "programmable": [
         { "rank": 1, "item": "Interoperability, not rehosting", "note": "The SLink slot takes gigaACE, Dante and Waves cards, and Allen & Heath publish the SQ MIDI/TCP control protocol. Almost anything that motivated looking at the firmware in the first place is better served here, and none of it needs reverse engineering." },
@@ -311,7 +341,10 @@
         "The debug UART is near-certainly populated (xuartps is linked and printf diagnostics are everywhere) but has never been located on a board.",
         "What the rest of the mixer's memory holds. Only two block-RAM halves are *initialised* at configuration time and those are the ones read out; every table the console writes at runtime — every fader law, every filter coefficient it computes — is invisible to a static bitstream read by construction.",
         "Whether the recovered remote-I/O netlist actually behaves. It elaborates in a simulator, which proves it is structurally coherent, not that it is functionally faithful; nothing has been driven through it and no output has been compared against a real device.",
-        "The arithmetic. The bitstream-to-netlist route has no support for the DSP48 primitive, so the mixer's multiply-accumulate structure — the actual mixing — cannot be recovered by this path at all. Nothing short of a different toolchain or a live bus capture changes that."
+        "The arithmetic. The bitstream-to-netlist route has no support for the DSP48 primitive, so the mixer's multiply-accumulate structure — the actual mixing — cannot be recovered by this path at all. Nothing short of a different toolchain or a live bus capture changes that.",
+        "Which socket *class* the patch index refers to. MixPad offers Local, SLink, USB and I/O Port tabs and only a Local patch was tested, so whether the class is encoded elsewhere in the record or in a separate table is unknown. The byte alone should not be assumed to identify a connector.",
+        "Where channel names live, and whether MixPad can write one at all. Both are open, and the second is what decides whether this can be settled without a console.",
+        "The rest of the 336-byte record — preamp, EQ, dynamics — none of which has been mapped."
       ],
       "traps": [
         "A parser assuming a 0x24 or 0x40 container header parses record 0 plausibly and then lands mid-payload in 55 MB of ARM code and artwork.",
@@ -319,27 +352,32 @@
         "GUI strings are reached through a master string-pointer table indexed by string ID, so they have no direct LDR-literal cross-reference. Only BSP and system strings are loaded directly.",
         "**Bitstream compression fails silently, not loudly.** The standard frame reader decodes the multi-frame-write packet into a named object and then drops it. Feed it a compressed bitstream and you get no error and no warning — you get a frame set that is quietly wrong, and it stays plausible through every downstream stage. Check for those packets before trusting anything built on the frames.",
         "**Carved filenames are a guess, and these ones were wrong.** The two remote-I/O bitstreams were carved and named for a part that the die measurement and the IDCODE then contradicted. A filename you invented during extraction is not evidence, and it will be quoted back at you three documents later.",
-        "**\"Twenty block RAMs in two columns\" was an artefact of the decode, not a finding.** An early pass matched initialised memory by shared column base address and reported ten times too many, because roughly ten tiles stack per column and differ only by word offset. Each tile's own word window has to be checked. The corrected answer is two."
+        "**\"Twenty block RAMs in two columns\" was an artefact of the decode, not a finding.** An early pass matched initialised memory by shared column base address and reported ten times too many, because roughly ten tiles stack per column and differ only by word offset. Each tile's own word window has to be checked. The corrected answer is two.",
+        "Looking for a patch table by scanning for an ascending run of bytes. A default show is patched 1:1, so the values do run `00 01 02 03 …` — but 336 bytes apart, not adjacent. The scan finds nothing, and the obvious conclusion from that — that the format has no patch table — is wrong. The same heuristic works on the Avantis and on the Yamaha `.CLF`, which is what makes it dangerous here.",
+        "Anchoring a record signature on a neighbouring byte. The byte after the patch field is a patched/unpatched flag, so requiring it silently dropped every unpatched channel — eight of forty on a default SQ-7 — and produced a patch list with fewer rows than the console and nothing to say any were missing.",
+        "Diffing before the app has written anything. MixPad flushes `CurrentShow` on logout, not on edit, so a diff taken straight after a change shows zero bytes moved and looks exactly like a format that does not store the setting."
       ]
     },
 
     {
       "id": "allen-heath-avantis",
-      "updated": "2026-08-14",
+      "updated": "2026-09-07",
       "manufacturer": "Allen & Heath",
       "model": "Avantis",
       "family": "dLive lineage (XCVI core)",
       "class": "Digital mixing console",
       "introduced": 2020,
       "status": "documented",
-      "tags": ["x86 control host", "Xilinx FPGA DSP", "Linux", "MD5-only updates", "No signing"],
+      "tags": ["x86 control host", "Xilinx FPGA DSP", "Linux", "MD5-only updates", "No signing", "Self-labelling show files"],
       "summary": "The structural inverse of the SQ: the control plane is a commodity x86 Linux box, and the mixing runs on a subordinate Xilinx FPGA the host programs at boot. OS updates carry integrity checksums but no signature.",
       "headline": "The V2.01 package is an x86-64 Qt application on a Tiny-Core-derived Linux, and the whole update validates on MD5 alone. The mix FPGA's bitstream is not a file in it because it is **inside the `Console` binary** — six bitstreams are, and each names its own device: two **XC7K160T** for the mix engine, two **XC7Z010** for FX, and two Artix-7 device images for the remote I/O.",
-      "method": "Static analysis of the V2.01 update package: the unstripped `Updater`, the stripped `Console` Qt binary and the plaintext OS scripts (`detect_sbc.sh`, `set_ssh.sh`, `PartitionCheck.sh`). No hardware inspected.",
+      "method": "Static analysis of the V2.01 update package: the unstripped `Updater`, the stripped `Console` Qt binary and the plaintext OS scripts (`detect_sbc.sh`, `set_ssh.sh`, `PartitionCheck.sh`). No hardware inspected. The show-file findings are a separate basis: the factory shows shipped inside **Avantis Director V2.01**, plus controlled diffs taken by running Director offline with no console attached and changing exactly one patch point between two saves.",
       "artifacts": [
         "`AllenHeath-Avantis-V2.01.zip` — Console V2.01 (rev 97241), OS V1.32; covers both Avantis and Avantis Solo",
         "`Updater` — 1 MB x86-64, unstripped: the update and checksum logic in the clear",
-        "`dCorefocal64.gz` (~22 MB Tiny-Core-derived x86 rootfs) and `vmlinuzfocal64` (5.4.3 kernel)"
+        "`dCorefocal64.gz` (~22 MB Tiny-Core-derived x86 rootfs) and `vmlinuzfocal64` (5.4.3 kernel)",
+        "The factory shows shipped inside **Avantis Director V2.01** — vendor content in a licensed install, reproducible from any install and not redistributed",
+        "Two shows saved from Director offline, identical but for one input patched from SLink to a local socket — the diff that located the patch table"
       ],
       "hardware": [
         { "label": "Control plane", "value": "An x86-64 single-board computer running Linux — the UI/control host only, not the mixer. `detect_sbc.sh` enumerates the shipped boards by CPU: Kontron D3543/D3544 (Gemini Lake J5005/J4005), Advantech AIMB-218 (Elkhart Lake N6211/J6413) and Kontron K3921-H (Alder Lake-N i3-N305 / N97). The console has migrated SBCs across its production life", "confidence": "verified" },
@@ -355,7 +393,12 @@
         { "label": "Operating system", "value": "A Tiny-Core-derived x86 Linux: a `dCorefocal64.gz` root filesystem, a 5.4.3 kernel (`vmlinuzfocal64`, `-tinycore64`) and Ubuntu-18.04-era userland `.deb`s, with X11 and a Qt compositor", "confidence": "verified" },
         { "label": "Host application", "value": "`Console` — 41 MB stripped Qt5 PIE (links `libQt5Core`/`libQt5Network`) — plus `Compositor` and an 81 MB `TouchScreen` binary. `Updater` ships unstripped", "confidence": "verified" },
         { "label": "Variants", "value": "One package serves both the Avantis surface and the rackmount Avantis Solo (`Firmware/Solo/…`, Solo OS v1.13); this build is Console V2.01 rev 97241, OS V1.32", "confidence": "verified" },
-        { "label": "Debug SSH", "value": "sshd is off unless a flag file appears: `set_ssh.sh` starts it at boot if `~/.ah_debug`/`.ah_ssh` exists or an `ah_debug`/`ah_ssh` file sits in the root of an inserted USB stick — an intentional, trivially-triggered service door", "confidence": "verified" }
+        { "label": "Debug SSH", "value": "sshd is off unless a flag file appears: `set_ssh.sh` starts it at boot if `~/.ah_debug`/`.ah_ssh` exists or an `ah_debug`/`ah_ssh` file sits in the root of an inserted USB stick — an intentional, trivially-triggered service door", "confidence": "verified" },
+        { "label": "A show is a gzipped tar, not a blob", "value": "`Show/` holds 34 subsystem folders, and the small top-level files in them are **plain text** — a version integer on the first line, then one value per line. `Scenes/` holds one **nested tarball per scene**, each split into a StageBox half (the I/O rack: preamps and processing, ~320 KB) and a Surface half (strip layout, banks, soft controls, ~16 KB). For a console whose OS updates carry no signature, the show format is correspondingly open", "confidence": "verified" },
+        { "label": "The scene blob labels itself", "value": "The scene payload is binary and about 37 % printable, but every parameter block carries a **human-readable label naming both the block type and the object it belongs to** — `Parametric EQ, Stereo Group Channel 01 Left`, `Compressor side chain source, Mono Group Channel 02`, `StageBox Port B Analogue Input, Slot 1, Number 07`. One factory show yields a whole block inventory by counting them: 256 stagebox analogue inputs, 144 parametric EQs, 128 compressors, 99 GX analogue inputs, and object classes from input channels down to the main pair. The socket blocks name a slot and a number, which is the same device/index split a patch model needs", "confidence": "verified" },
+        { "label": "Scene 65535 is the live state", "value": "Numbered scenes were byte-identical across a change that visibly altered the console's configuration; the only file that moved was scene `0xFFFF`. That is where the working state lives, and it is where anything reading a show has to look", "confidence": "verified" },
+        { "label": "The input patch is not scene-recallable", "value": "It exists only in the live-state scene — recalling scene 3 does not repatch the console. So a patch list is a property of the show rather than of whichever scene happens to be current, which is the same shape the SQ has and worth expecting across the range", "confidence": "verified" },
+        { "label": "The Channel Mapper table", "value": "Sixteen bytes past a block labelled `Channel Mapper`, the input patch is **three bytes per input channel**: a source/device type byte, then a 0-based connector index as a big-endian 16-bit value. The default state maps every channel 1:1 to SLink, and moving one channel to a local socket changed its type byte alone — index already 0 — while the stride and 0-based numbering were confirmed by the untouched entries running consecutively either side of it. Only two type codes are confirmed; the I/O Port and USB tabs in Director each have their own and they are unknown", "confidence": "verified" }
       ],
       "security": [
         { "label": "Update validation", "value": "Integrity, not authenticity. `Updater` checks the package against `Firmware.md5` (`VerifyChecksum`, `CheckChecksum`, `CorruptFirmware`) and sends header/data checksums to each MCU it flashes. No signature, RSA, GPG or public key anywhere in the update path — the SQ's 'CRC only, no signing' posture, here as MD5", "confidence": "verified" },
@@ -371,12 +414,17 @@
       "openQuestions": [
         "The layout of the SPI→AXI register interface. The parts are now named and the bitstreams located, but the whole audio path still sits behind `/dev/ah_audio` and no register is documented — the same black box the SQ-5 has, and the one thing worth reversing here.",
         "Which of the six embedded bitstreams drives which board. The device each is *for* is stated by its own IDCODE packet; the board each lands on is an inference from size and from the FX and SLink strings around it. Nothing was disassembled and no bitstream was traced to a `FPGALoader` call site.",
-        "Whether the `RSA_*` strings mean anything is enabled, or are dormant Xilinx boot-flow capability."
+        "Whether the `RSA_*` strings mean anything is enabled, or are dormant Xilinx boot-flow capability.",
+        "The remaining source type codes. Two of at least five are confirmed — the I/O Port 1, I/O Port 2 and USB sources each have their own tab in Director and their own code, and guessing them would produce a patch list that is confident and wrong.",
+        "What the byte before each block label is. It looks like a block size rather than a string length — a graphic EQ carries a larger value than a mix delay, which is consistent with more parameters — but it has not been confirmed, and it is what a structural walk of the scene would need.",
+        "Whether the dLive format is byte-identical. dLive Director ships the same structure and the two are very likely one format; no byte-for-byte comparison has been made."
       ],
       "traps": [
         "The x86 host is not the mixer. The audio path is a Xilinx FPGA the host merely programs and drives over `/dev/ah_audio`; reversing the Qt binary tells you about control and UI, not DSP — the same split as the SQ, where the bitstream was the mixer.",
         "`Firmware.md5` is an integrity manifest, not a signature. A repacked update with a recomputed MD5 would pass — do not read the checksum step as authentication.",
-        "Crypto strings in `Console` are not proof of a cryptographic validator or a signed update — several digests belong to libarchive and the RSA strings sit in the FPGA boot flow. Attribute crypto only after tracing the specific path."
+        "Crypto strings in `Console` are not proof of a cryptographic validator or a signed update — several digests belong to libarchive and the RSA strings sit in the FPGA boot flow. Attribute crypto only after tracing the specific path.",
+        "Comparing two shows with a recursive file diff. Every scene tarball differs on gzip framing alone, so `diff -rq` reports that everything changed and hides the one file that actually did. Compare by content, not by archive bytes.",
+        "Expecting the factory shows to answer it. All of them are likely to use the default patch — the difference between an FOH show and a Monitors show is mix structure, not patching — so no amount of diffing them locates a patch table. One controlled diff with a single patch point moved settled in minutes what six shipped shows could not settle at all."
       ]
     },
 
@@ -1085,44 +1133,61 @@
 
     {
       "id": "allen-heath-dlive",
-      "updated": "2026-08-07",
+      "updated": "2026-09-07",
       "manufacturer": "Allen & Heath",
       "model": "dLive",
       "family": "dLive",
       "class": "Digital mixing console",
       "introduced": 2016,
-      "status": "candidate",
-      "tags": ["Not started"],
-      "summary": "Appears in existing work only as the larger sibling platform to the SQ. No analysis has been performed.",
-      "headline": "No work has been done on this platform. It is listed so the index reflects what has been considered as well as what has been examined.",
-      "method": "None.",
-      "artifacts": [],
-      "hardware": [],
-      "software": [],
-      "security": [],
-      "programmable": [],
-      "verdict": "Candidate only.",
-      "openQuestions": ["Everything."],
-      "traps": []
+      "status": "partial",
+      "tags": ["Show files only", "Director V2.11", "Console unexamined"],
+      "summary": "Still essentially unexamined as a console — no firmware package, no silicon, no update path. What has been looked at is what its Director application writes to disk, and that turns out to be the Avantis format.",
+      "headline": "The only thing examined here is **dLive Director V2.11's show files**, and they are the same shape as the Avantis': a gzipped tar of plain-text subsystem files with one nested tarball per scene, split into a stagebox half and a surface half. Nothing of the console itself — not its firmware, not its silicon, not its update path — has been looked at, and this page should not be read as if it had.",
+      "method": "Inspection of the seven factory shows shipped inside **dLive Director V2.11**, compared structurally against the Avantis shows the same work covers. Nothing else: no firmware package was obtained, no hardware was inspected, and none of the Avantis findings has been re-derived on a dLive file.",
+      "artifacts": [
+        "The seven factory shows inside **dLive Director V2.11** — FoH, Monitors, Surround, MultiSurface FoH and Mon, and FoH LCRplus"
+      ],
+      "hardware": [
+        { "label": "What has been examined", "value": "Nothing. No firmware package has been obtained, no console has been opened or inspected, and no part number on this platform has been established by us. The larger sibling to the SQ and the Avantis, and unexamined next to both", "confidence": "unknown" }
+      ],
+      "software": [
+        { "label": "What Director writes", "value": "dLive Director V2.11 ships **seven factory shows** in the same structure as the Avantis: a gzipped tar, subsystem folders whose small files are plain text, and one nested tarball per scene split into a stagebox half and a surface half", "confidence": "verified" },
+        { "label": "Almost certainly the Avantis format — but only almost", "value": "The structure matches and the two Directors are plainly the same application family, so the Avantis findings (the live state living in scene 65535, the input patch being global rather than scene data, the three-byte Channel Mapper entries) are the reasonable expectation here. **None of them has been checked against a dLive file**, no byte-for-byte comparison has been made, and a larger console is exactly where a shared format is most likely to differ in its dimensions", "confidence": "inferred" }
+      ],
+      "security": [
+        { "label": "Not examined", "value": "No update package has been obtained, so nothing is known about how this platform validates or signs its firmware. The SQ and the Avantis both ship unsigned images with integrity checks only; whether the flagship follows them is a question, not an inference", "confidence": "unknown" }
+      ],
+      "programmable": [
+        { "rank": 1, "item": "The show file, and nothing else yet", "note": "The only surface examined on this platform. It is a tar of gzipped tars with self-labelling scene blobs, so reading a dLive show is a solved problem the moment someone checks the Avantis findings against a dLive file. Everything else here — the firmware, the update path, whatever does the mixing — is unopened." }
+      ],
+      "verdict": "Not a teardown, and it should not be mistaken for one. One question has been asked of this platform — what does its editor write to disk? — and the answer is that it writes the Avantis format, or something close enough that the difference has not shown up in the structure. That is worth recording because it makes a dLive show readable today, and because it is evidence that Allen & Heath run one show format across the range. It says nothing whatever about the console: what mixes, what the update package contains, whether it is signed, and how it compares to the SQ's FPGA-and-bare-metal design are all open, and this page will stay thin until someone opens the firmware.",
+      "openQuestions": [
+        "Whether the show format really is the Avantis'. The structures match; nothing has been compared byte for byte, and the Channel Mapper's stride and type codes have not been confirmed on a dLive file.",
+        "Everything about the console itself — the update package and whether it is signed, what the mixing runs on, how the surface talks to it, and whether the SQ's or the Avantis' architecture is the closer relative."
+      ],
+      "traps": [
+        "Reading a sibling's findings onto this page. Everything below the show format on this platform is inference from the SQ and the Avantis, and it is deliberately not written here as if it were established. The entry stays thin on purpose."
+      ]
     },
 
     {
       "id": "behringer-x32-midas-m32",
-      "updated": "2026-08-07",
+      "updated": "2026-09-07",
       "manufacturer": "Behringer / Midas",
       "model": "X32 / M32",
       "family": "X32",
       "class": "Digital mixing console",
       "introduced": 2012,
       "status": "partial",
-      "tags": ["DCP container", "Stream cipher", "i.MX253", "SHARC", "OpenX32"],
+      "tags": ["DCP container", "Stream cipher", "i.MX253", "SHARC", "OpenX32", "Plain-text scene files"],
       "summary": "The container is solved to the byte and every payload inside it is encrypted — so the update image is simultaneously the most transparent and the least readable in this index. It is also the only platform here where a third-party project runs its own operating system on the hardware.",
       "headline": "The update image carries integrity but no authenticity. Its two header digests are plain MD5 and both reproduce exactly — `md5(\" - designed by Thomas Zint - \" ‖ image with bytes 96–112 zeroed)` for the whole image, and `md5(directory)` with a placeholder constant re-planted at offset 112 — yet nothing in the image is signed. That is why a third-party OS boots on a stock console: the bootloader checks that an image is intact, never that Behringer wrote it.",
-      "method": "Static analysis of one public firmware update image, `dcp_corefs_release-4.13-20240415.update` (release 4.13, 2024-04-15), plus the published release notes. No hardware was involved and no console was opened. Findings were then cross-checked against the OpenX32 project's published material, which is written by people who do have the hardware — that cross-check corrected three claims and is recorded in the traps below.",
+      "method": "Static analysis of one public firmware update image, `dcp_corefs_release-4.13-20240415.update` (release 4.13, 2024-04-15), plus the published release notes. No hardware was involved and no console was opened. Findings were then cross-checked against the OpenX32 project's published material, which is written by people who do have the hardware — that cross-check corrected three claims and is recorded in the traps below. The scene-file findings come from a separate basis: `.scn` files read directly, with the enumerations settled by falsification against a known-good fixture rather than by finding a table.",
       "artifacts": [
         "`dcp_corefs_release-4.13-20240415.update`, 7,829,504 bytes, as published by the manufacturer",
         "The seven-page release-note PDF accompanying that version",
-        "`dcp_compiler.pl` and `dcp_decompiler.pl`, published by the OpenX32 project with the original author's permission"
+        "`dcp_compiler.pl` and `dcp_decompiler.pl`, published by the OpenX32 project with the original author's permission",
+        "A `.scn` scene file from a 32-channel console — about 2,100 lines of line-oriented ASCII, and the fixture every enumeration below was checked against"
       ],
       "hardware": [
         { "label": "CPU", "value": "NXP i.MX253, ARM926EJ-S. Nothing in the firmware image names it — this comes from the OpenX32 project, which runs Linux on the part", "confidence": "public" },
@@ -1144,7 +1209,11 @@
         { "label": "Keystream", "value": "No reuse. The 39,176 bytes of inter-member padding are almost certainly plaintext zeros and are encrypted too, giving raw keystream at known offsets — and all of those regions are distinct, with no period detectable up to 64 KiB", "confidence": "verified" },
         { "label": "Key derivation", "value": "The published compiler derives a per-member key as `md5(version string ‖ member name ‖ \" - designed by Thomas Zint - \")`, unpacked to four 32-bit words, alongside the member's start block. Every one of those inputs is plaintext in the shipped image. The encryption step itself is absent from the published source, and eight natural constructions over that key material score at chance against the padding", "confidence": "inferred" },
         { "label": "The application", "value": "`dcpapp.bin`, 1,491,840 bytes. There is no kernel, filesystem or library member anywhere in the image, so the stock software is most likely bare-metal or an RTOS rather than a Linux userland — a real architectural difference from the HD96 and DM7, which both ship a rootfs measured in tens of megabytes", "confidence": "inferred" },
-        { "label": "Third-party OS", "value": "OpenX32 replaces all of it with Linux 6.18 LTS, BusyBox and an LVGL interface, booting from USB via the stock DCP bootloader", "confidence": "public" }
+        { "label": "Third-party OS", "value": "OpenX32 replaces all of it with Linux 6.18 LTS, BusyBox and an LVGL interface, booting from USB via the stock DCP bootloader", "confidence": "public" },
+        { "label": "What the console writes to disk", "value": "**No container at all.** A scene is line-oriented ASCII: one OSC-like path per line followed by whitespace-separated tokens, double-quoted where a value contains spaces. No compression, no encryption, no checksum — about 2,100 lines for a 32-channel console. The header line carries a format version (`#2.7#`, the only one seen), the scene name, a note field, and a recall-scope bitmap that has not been decoded. The console with the least readable firmware in this index writes the most readable state file in it", "confidence": "verified" },
+        { "label": "The patch chain is three hops, and all three matter", "value": "`connector → routing block → input slot → channel source → channel`. `/config/routing/IN` names five blocks — four of eight connectors each onto input slots 1–32, plus the rear aux inputs, which sit outside the slot space — and the blocks are freely assignable, so slots 25–32 can sit on AES50-**B**. Each channel then selects which slot feeds it, also freely: in the fixture six channels select a slot no other channel uses, and six slots reach no channel at all. A straight \"channel N takes XLR N\" reading is wrong on this console and gives no sign of being wrong", "confidence": "verified" },
+        { "label": "Head-amp state is keyed by connector, not by channel", "value": "128 flat entries of gain and phantom — 0–31 the local inputs, 32–79 AES50-A, 80–127 AES50-B — stored whether or not the show uses them. Preamp state therefore belongs to the socket and survives a repatch, which is the opposite of how a channel-keyed console behaves and the thing most likely to be got wrong when converting between the two", "confidence": "verified" },
+        { "label": "The output enumeration, settled by falsification", "value": "0 off, 1–3 the main bus, 4–19 mix bus 1–16, 20–25 matrix 1–6, 26–57 channel direct outs. The competing reading — 1–16 mix, 17–22 matrix — is not rejected on preference but because the fixture contains output values 23 and 24, which under it decode to **matrix 7 and matrix 8 on a console with six matrices**. The accepted mapping is then corroborated positively: Ultranet port 1 decodes to channel 1's direct out tapped pre-EQ, which is the conventional default, and all 42 output rows in the fixture land inside the mapped range with no fallback taken. Values 58 and above are unmapped and are reported rather than guessed", "confidence": "verified" }
       ],
       "security": [
         { "label": "Image integrity", "value": "Two MD5 digests in the header — one over the directory, one over the whole image with a fixed seed string prepended. Both verified. MD5 and a published constant, so this is a corruption check, not a security boundary", "confidence": "verified" },
@@ -1155,21 +1224,27 @@
       "programmable": [
         { "rank": 1, "item": "The DCP bootloader, via a self-built container", "note": "The format is fully documented above and the payloads inside a self-built image need no encryption, because the bootloader does not require any. A `.run` extension executes from RAM and reverts on power-cycle; `.update` writes to the internal SD card. This is the route OpenX32 takes and it needs no exploit — only the format." },
         { "rank": 2, "item": "The two SHARCs and the FPGA, over internal SPI", "note": "Both DSPs and the FPGA are configured by the main CPU over SPI at boot, so whatever controls the CPU controls them. The toolchains are the obstacle rather than the access: CrossCore for the SHARCs and Xilinx ISE 14.7 or Lattice Diamond for the fabric." },
-        { "rank": 3, "item": "The encrypted payloads", "note": "Not currently reachable. The container around them is solved, the key derivation inputs are known, and there are two independent offline oracles for testing a candidate — but the cipher construction is not published and was not recovered here." }
+        { "rank": 3, "item": "The encrypted payloads", "note": "Not currently reachable. The container around them is solved, the key derivation inputs are known, and there are two independent offline oracles for testing a candidate — but the cipher construction is not published and was not recovered here." },
+        { "rank": 4, "item": "The scene file, which is a text file", "note": "Everything else on this list is behind a stream cipher or an undocumented SPI link. The console's own state is not: it is ASCII, unsigned and unchecksummed, so reading a show, rewriting a patch and handing it back is a text-processing job. Our own PatchFerret ships the adapter. The limit is knowledge rather than access — the output routing blocks on the serial links name groups of definitions rather than individual sources, and expanding those into per-connector rows is the one piece of work that would say what is actually on each stage-box return." }
       ],
       "verdict": "A firm negative on payload content and a complete positive on everything around it. The container is solved to the byte, the manifest is a board-level map of a decade-old product line, and the update path turns out to authenticate nothing — which is the finding that matters, because it is why this platform has the most third-party open-source activity of anything in this index. The cipher stands.",
       "openQuestions": [
         "What construction turns the derived key into a keystream? The inputs are known and the padding gives a known-plaintext oracle at 39,176 known offsets, so a candidate can be confirmed or rejected entirely offline, with no console involved.",
         "Does `styles/ablesque.rsrc.z` decompress to a resource bundle once decrypted, and does it carry the parameter model? At 36% of the image it is the largest single object and nothing is known about its contents.",
         "Do the two per-member MD5s let a decryption be confirmed member by member? They are over plaintext, so yes in principle — the first covers only the leading 512 bytes, which makes partial verification cheap.",
-        "What changed between 4.12 and 4.13? Diffing two releases would show which members moved and the release notes say what changed functionally, mapping members to features without decrypting anything. It costs one more download and remains the highest-value next action."
+        "What changed between 4.12 and 4.13? Diffing two releases would show which members moved and the release notes say what changed functionally, mapping members to features without decrypting anything. It costs one more download and remains the highest-value next action.",
+        "The output routing blocks on the AES50 links, the card slot and the local outputs. They name *groups* of output definitions rather than individual sources, so expanding them needs a second resolution pass — the largest single gap in the scene format, and the one that would tell an engineer what each stage-box return carries.",
+        "Whether the M32 file is byte-identical to the X32's. Believed to be, never verified — and the same assumption applied to the X-Air range is weaker still, since the consoles have different I/O counts, so a sniff would succeed and the output could be quietly wrong.",
+        "Older scene-format versions. Only `#2.7#` has been seen, and nothing is known about what changed before it."
       ],
       "traps": [
         "**Counting the header as one of the members.** The header's count field reads 197, and it is tempting to read that as one header record plus 196 members. It is not: the header occupies its own 128 bytes and 197 members follow. Getting this wrong drops the last member — which here is the largest object in the image — and the bytes it occupied then look like an unexplained 2.8 MB tail past the end of the table. That produced a confident, wholly fictitious finding, complete with three hypotheses about what the mystery region might be. The correct accounting closes to the byte with nothing left over, and that exact closure is the check that would have caught it immediately.",
         "**Assuming a 32-byte digest field is a 32-byte digest.** Every SHA-256 and SHA-512 candidate was tested against it and all were rejected, which correctly suggested the digests were over plaintext — but for the wrong reason. The field is two 16-byte MD5s, and the first covers only the leading 512 bytes. A test that had split the field in half would have identified the algorithm on the spot.",
         "**Recomputing a self-referential digest without reconstructing the state it was computed in.** The header's directory digest is `md5(directory)` taken while offset 96 was still zeros and offset 112 held `md5(\"DCP bootloader\")` as a placeholder. Hash it as it sits in the shipped file and it mismatches — which reads exactly like \"this is not a digest of the table\", the wrong conclusion. Both header digests reproduce once the write order is modelled.",
         "**Reading entropy ≈ 8.0 as proof of encryption.** The largest member is named `.z` and compressed data measures the same as encrypted data on every statistic used here. What actually settles it is the MD5 oracle: the stored digests are over plaintext, so if a member were merely compressed its digests would reproduce from the bytes as they sit. For all 197, they do not.",
-        "**Treating a third-party project as competition rather than as instrumentation.** Three claims here — the DSP split, the second-source FPGA and the digest format — were confirmed or corrected against OpenX32's published material in minutes. A project with the hardware on the bench is the cheapest verification available to an analysis that has only a file."
+        "**Treating a third-party project as competition rather than as instrumentation.** Three claims here — the DSP split, the second-source FPGA and the digest format — were confirmed or corrected against OpenX32's published material in minutes. A project with the hardware on the bench is the cheapest verification available to an analysis that has only a file.",
+        "Tokenising the scene file without respecting quotes. `\"\"` is a real, empty token — most channels are unnamed — and dropping it shifts every field after it on that line, which produces a plausible decode rather than an error.",
+        "Counting output rows by counting lines. `/outputs/main/NN` is followed by its own `/delay` line and `/outputs/p16/NN` by an `/iQ` line, so a naive count double-counts two of the five output sections."
       ],
       "openProjects": [
         {

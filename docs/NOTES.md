@@ -21,6 +21,62 @@ so never hard-code a count in the pages).
 **Preview config `aux-opsy` on port 4531 was NOT in `~/.claude/launch.json`** despite this
 file previously claiming it was — added 2026-08-14. Verify before assuming it is there.
 
+## The 2026-09-07 pass — the show-file strand
+
+Seven entries gained *what the console writes to disk*, out of `patchferret-research`:
+**X32/M32** (`.scn`), **SQ** (`NVDATA.DAT`), **Avantis** (Director shows), **dLive**,
+**DM3** (the MBDF container and its self-describing payload), **DM7** (the record layout its
+own descriptors declare) and **QL1** (`.CLF`). No new pages — 23 platforms, 27 routes, 26
+sitemap URLs, 10 classes, unchanged.
+
+This is a **second axis** on entries that were firmware teardowns, and the two must stay
+apart. Every method line on those pages now says how many bases the entry has and which rows
+came from which; the QL1 is on three (firmware image, network capture, console file) and says
+so.
+
+**`allen-heath-dlive` came off `candidate`** — the point of the pass. It had said "No work
+has been done on this platform" since 2026-08-07, and that stopped being true on 08-11 when
+the Avantis show format was solved and dLive Director turned out to ship the same structure.
+It is `partial` now. The vocabulary describes that as "substantial findings recorded", which
+this entry does **not** have, so its headline and verdict do the correcting in the entry's own
+words: one question has been asked of this platform and everything else is unopened. If a
+"one narrow finding" tier is ever wanted, this is the entry that motivates it.
+
+**That left no `candidate` entries at all, so the chip could only ever return "No platform
+matches that".** The status chips now derive from the statuses actually present. The
+`statuses` array itself stays whole — `data-statusrank` and the "Research depth" sort index
+into it, and `/method/` documents the full vocabulary — so the chip comes back on its own the
+moment a candidate entry is added. Same principle as the strands: derive it, don't curate it.
+
+**No `measured` rows in this pass.** A vendor editor running offline is not hardware, exactly
+as a simulator is not — the rule the 08-14 notes set. Everything here is `verified` (read out
+of a file) or, on the dLive's "probably the Avantis format", `inferred`.
+
+### What the strand is worth as a comparison
+
+Asking six consoles the same question separates them more cleanly than their firmware does.
+The X32 writes line-oriented ASCII with no checksum while its firmware is the only encrypted
+image in the index. The SQ writes a 128 KiB NVRAM image — a memory dump, not a document —
+with a four-byte checksum on the end. The Avantis writes a tar of gzipped tars whose scene
+blobs label their own parameter blocks in English. Yamaha's modern line writes one container
+across firmware, presets and scenes, with a payload that carries its own schema; the QL
+generation writes a flat binary with a checksum and ships no descriptors anywhere, which is
+the same architectural split the firmware teardowns found between *Lime* and *CITRUS*.
+
+Two of the six — the SQ and the CL/QL, unrelated manufacturers — end their state file with a
+checksum that is harmless for reading and a hard blocker for writing. Neither is solved and
+neither should be: that is the boundary between an interoperability tool and something that
+writes to a console.
+
+### The technique that did all of it
+
+`/method/` gained a bullet for it, because every patch table in this pass was found the same
+way and none of it needed a console: **run the manufacturer's own editor offline, change
+exactly one thing, save again, and compare the two files.** Five bytes moved on the SQ, two on
+the QL, nine on the Avantis. The traps are all in the same place too — the editors' confirm
+dialogs default to No, MixPad does not flush until logout, and gzip framing makes a recursive
+diff useless.
+
 ## The 2026-09-06 pass — the control layer, six hardware bases, and a filter that never filtered
 
 Five entries moved and one arrived. **Midra, LiveCore and LivePremier** gained the control

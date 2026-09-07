@@ -4,6 +4,9 @@ import data from '../../data/platforms.json';
 import { strandPhrase } from '../../lib/corpus';
 
 const { platforms, statuses } = data;
+// Chips for the statuses actually in use. `statuses` stays whole below — the sort rank
+// and /method/'s vocabulary both index into the full list.
+const statusesInUse = statuses.filter((s) => platforms.some((p) => p.status === s.id));
 
 // Everything the client-side filter searches is baked into a data attribute at
 // build time, so the page needs no fetch and no framework.
@@ -154,7 +157,7 @@ const schema = [
           <button class="chip" type="button" data-filter="status" data-value="" aria-pressed="true">All status</button>
           {/* aria-label is explicit so a chip announces "Documented" rather than its
               whole tooltip — title alone wins the accessible-name computation. */}
-          {statuses.map((s) => (
+          {statusesInUse.map((s) => (
             <button class="chip" type="button" data-filter="status" data-value={s.id} aria-pressed="false" aria-label={s.label} title={s.note}>
               {s.label}
             </button>

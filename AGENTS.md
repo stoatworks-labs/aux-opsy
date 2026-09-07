@@ -20,6 +20,11 @@ Read this before editing. See `README.md` for what the project *is*.
   cards, not by reading the count** — 23 boxes to 1, search `acn` to 1, reset to 23. That is
   the check that caught `[hidden]` doing nothing (see the traps); the count agrees with
   itself either way.
+- **2026-09-07: the status chips are derived from the statuses in use**, not from the whole
+  vocabulary — the dLive was the last `candidate` and a chip that can only return "No platform
+  matches that" is not worth shipping. Re-measured after that change: 23 cards, `Partial`
+  filters to 9, which matches the data. `statuses` itself is still whole, because
+  `data-statusrank` and the sort index into it.
 - The `measured` confidence marker is the only filled chip and clears WCAG AA in both schemes
   — 6.02:1 light, 6.45:1 dark, checked by computing the ratio in the page.
 - Every detail page now has at least one outbound "Related entries" link (checked across all
