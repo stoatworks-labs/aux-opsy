@@ -1903,6 +1903,159 @@
         "Pointing a standard SLP library at the standard group. Both the multicast address and the port are one digit off the registered values, so the correct tool, correctly configured, finds nothing at all and reports no error.",
         "Believing the device-description URL. It is advertised in every announcement and there is no server behind it — not even one that answers with an error."
       ]
+    },
+    {
+      "id": "sennheiser-ewg3",
+      "updated": "2026-09-15",
+      "manufacturer": "Sennheiser",
+      "model": "evolution wireless G3 (EM 300 / EM 500 G3)",
+      "family": "evolution wireless G3 — EM 300 G3, EM 500 G3, SR 300 IEM G3, and the 2000-series rack units that share the same WSM control protocol",
+      "class": "Wireless microphone system",
+      "introduced": 2009,
+      "status": "documented",
+      "hardwareBasis": "One Sennheiser EM 500 G3 rack receiver (band G, 606–648 MHz) on our bench, driven from a real Yamaha DM3 through our own bridge. Every measured row was read off that receiver; the G4, 2000-series and SR IEM variants are inferred from the shared protocol, not tested.",
+      "tags": [
+        "WSM binary protocol",
+        "UDP 8133",
+        "The documented protocol is dead",
+        "AF-out is an index",
+        "Single-master write lock",
+        "Frequency is LE kHz",
+        "Bidirectional gain bridge"
+      ],
+      "summary": "The G3 rack receivers are remote-controlled — but not by the ASCII \"media control protocol\" Sennheiser published. That one (UDP 53212, firmware ≥ 1.7.0) drew silence from our EM 500 G3 on every probe. What actually drives it is an undocumented binary protocol that Wireless Systems Manager speaks on UDP 8133, and once we had it we mapped the receiver's analog output level to a console's remote head-amp gain and drove one from the other on the bench.",
+      "headline": "The documented protocol is the wrong one. Sennheiser's TI 1254 \"media control protocol\" — ASCII on UDP 53212, `Push` / `RF1` / `RF2` — needs receiver firmware ≥ 1.7.0, and the EM 500 G3 on our bench answers **nothing** on 53212. WSM drives it over a completely separate, undocumented binary protocol on **UDP 8133**, behind a single-master write lock, and it carries a writable analog-output level — an index, not a dB value — that we wired to a mixing desk's remote gain.",
+      "method": "Two bases, kept apart. The wire protocol was reconstructed from packet captures of Wireless Systems Manager 4.9.0 talking to the receiver, and everything labelled *measured* was then read back off the **running EM 500 G3** — discovery, the config packet, the tuning limits, the preset-bank tables, the live RF meter and the analog-output level — with every write confirmed by reading it back, and the AF-out control proven end-to-end by driving it from a real DM3. The *public* rows come from Sennheiser's own TI 1254 document, which describes the *other*, unused protocol. Nothing was decapped or dumped; the receiver's own firmware was never read.",
+      "artifacts": [
+        "Packet captures of Wireless Systems Manager 4.9.0 ↔ a real EM 500 G3 — a cold-start discovery and a live control session — retained as `.pcap`",
+        "`TI 1254 v1.0` — Sennheiser's \"Media control protocol description\" for the ew 300-500 G4 / IEM G4, i.e. the ASCII/53212 protocol: the public reference for the protocol this receiver does *not* speak",
+        "`libEWG3EMDevice.dylib` — WSM's own G3 device plugin, whose Qt slot names (`OnSetAFOutFlag`, `OnSetSquelchFlag`, `OnSetEqualizerFlag`, `EWG3 Fast Scan Request command sent successfully`) name the exact field set seen on the wire and a scan path not yet captured",
+        "A reference client and a shipped console-bridge adapter (Dante-BabelBox `sennheiser-ewg3`), both exercised against the receiver on the bench"
+      ],
+      "hardware": [
+        {
+          "label": "One receiver, one control port",
+          "value": "The EM 500 G3 is a UHF diversity receiver — band G here, 606–648 MHz — with a rear RJ45 that carries all remote control. Both directions of that control use **UDP port 8133**, and the receiver replies to port 8133 regardless of the sender's source port, so a controller has to bind 8133 to hear it at all",
+          "confidence": "measured"
+        },
+        {
+          "label": "AF-out is the one writable audio parameter, and it is an index",
+          "value": "The receiver's analog output level (−24…+18 dB in 3 dB steps) is a settable config field stored as an **index, not a dB value**: dB = 3·index − 24, index 0..14. WSM shows the byte `0x0c` as \"+12\" and `0x06` as \"−6\"; writing every step 0..14 and reading it back traced the whole curve, and an out-of-range index folds to `0x10` on the device. It is the actuator the whole bridge rests on",
+          "confidence": "measured"
+        },
+        {
+          "label": "The live RF meter",
+          "value": "The receiver streams a 40-byte status packet at ~12 Hz. Logging only its *changes* at rest, byte 7 was the only one that moved — 0x26→0x64 tracking the natural signal flutter with the transmitter untouched — so byte 7 is the **current RF level in percent** (TI 1254: 0% = 0 dBµV, 100% = 40 dBµV, >100% possible). The audio, battery, mute and pilot fields in the same packet stayed constant and remain unmapped, because mapping them needs a transmitter that moves",
+          "confidence": "measured"
+        },
+        {
+          "label": "The name field is fragile",
+          "value": "A control write that sets stray dirty-flags in the flag region blanks the device name — the name goes to spaces and the channel label to a \"no data\" placeholder. Reproduced once by accident here and recovered by re-writing the name from WSM; the shipped tooling never writes the name for exactly this reason",
+          "confidence": "measured"
+        },
+        {
+          "label": "The documented ASCII protocol is simply absent",
+          "value": "Sennheiser documents an ASCII \"media control protocol\" on **UDP 53212** (`Push`, `RF1`, `RF2`, `Squelch`, `AfOut`…) for firmware ≥ 1.7.0. This receiver answered **nothing** on 53212 across every probe — no reply, no ICMP — while the same unit was fully controllable on 8133 at the same moment. The documented protocol is either older-firmware-gated or was never present on this unit",
+          "confidence": "measured"
+        }
+      ],
+      "software": [
+        {
+          "label": "Discovery is a fixed multicast payload, not mDNS",
+          "value": "A 1035-byte packet multicast to **224.0.0.251:8133** — the mDNS group address, but the payload is a fixed `[servicecommand]devinfo` string, not an mDNS query. The receiver replies unicast with an ASCII record — `Model=EM500G3   ID=<mac>   IPA=<ip>` — and re-announces the same record to :8133 about every 5 s, so a passive listener finds it without asking",
+          "confidence": "measured"
+        },
+        {
+          "label": "Single-master write lock",
+          "value": "The receiver keeps a client table and one **master slot** holding the master controller's IP. Writes are honoured only from the master; while WSM holds the slot an outside controller's writes are accepted on the wire and **silently dropped** — no error, no reply, no change. The slot clears when WSM stops its ~2 s keepalive, and a controller that has been sending its own keepalive then inherits it. This is the mechanism a bridge must respect to write anything at all",
+          "confidence": "measured"
+        },
+        {
+          "label": "Config packet layout",
+          "value": "The main config packet (134 bytes, 12-byte header) carries the device name (ASCII), the frequency as a **little-endian kHz uint32** (`0x0009d94a` = 645450 → 645.450 MHz), the AF-out index, the equalizer (0–3) and RX-mute — each read back after writing. A separate packet carries the tuning limits as two little-endian kHz values, 606000 / 648000 here",
+          "confidence": "measured"
+        },
+        {
+          "label": "Writes are value-plus-dirty-flag",
+          "value": "A write is a 128-byte packet: a 4-byte type header, a 4-byte client token, then a 120-byte body that mirrors the config-read layout — the new value at its field offset, a per-field dirty flag at `0x45 + offset`, and a global write flag. Confirmed for frequency, equalizer, RX-mute and AF-out, each echoed back by an unsolicited config packet",
+          "confidence": "measured"
+        },
+        {
+          "label": "The preset-bank tables are 16-bit LE × 25 kHz",
+          "value": "At connect the receiver sends two 1296-byte packets of 16-bit little-endian frequency codes; `code × 25 = kHz`. The largest, `0x6540 × 25 = 648000 kHz`, lands exactly on the upper tuning limit, and the current 645.450 MHz is `0x64DA`. So the receiver hands over its whole frequency plan — 162 and 196 presets across the two packets, on a 25 kHz raster — the binary form of TI 1254's `BankList`",
+          "confidence": "measured"
+        },
+        {
+          "label": "WSM's own plugin corroborates the field set",
+          "value": "WSM's `libEWG3EMDevice.dylib` carries Qt slot names — `OnSetAFOutFlag`, `OnSetSquelchFlag`, `OnSetEqualizerFlag`, `OnSetRFMuteFlag` — that name exactly the fields seen on the wire, alongside an `EWG3 Fast Scan Request` band-scan path not exercised here",
+          "confidence": "verified"
+        },
+        {
+          "label": "The message headers are constant per type",
+          "value": "Every message begins with a 4-byte header fixed per message type — register, config-request, write, and the device's meter, config, keepalive-ack and discovery-reply — rather than a sequential opcode, which is consistent with a per-command checksum. The header bytes were catalogued from the capture; the algorithm behind them was not derived, so a controller replays the constants rather than computing them",
+          "confidence": "inferred"
+        },
+        {
+          "label": "The documented ASCII protocol, for reference",
+          "value": "Per TI 1254, the unused protocol is line-based on 53212: a `Push <timeout> <cycle> <flags>` subscription, then cyclic `RF1` / `RF2` / `AF` / `Bat` / `States` / `Msg` attributes, with `AfOut` in 3 dB steps and `Squelch` in 2 dB steps. It is the natural mic-telemetry surface — for a receiver whose firmware answers it",
+          "confidence": "public"
+        }
+      ],
+      "security": [
+        {
+          "label": "No authentication on the control port",
+          "value": "UDP 8133 is open and unauthenticated. Anything with IP reachability can discover the receiver and, once it holds the master slot, change its frequency, output level, equalizer and mute. This is a control-VLAN device by construction",
+          "confidence": "measured"
+        },
+        {
+          "label": "The master lock is coordination, not access control",
+          "value": "The single-master slot is last-writer-wins arbitration, not security — it is claimed by simply sending keepalives once the incumbent stops, with no credential of any kind. It stops two controllers fighting; it stops nobody getting in",
+          "confidence": "inferred"
+        }
+      ],
+      "programmable": [
+        {
+          "rank": 1,
+          "item": "The WSM binary protocol on UDP 8133 — discover, read, write",
+          "note": "The only surface a real G3 answers. Multicast discovery, a full config read (name, frequency, limits, EQ, mute, output level, and the preset-bank plan), and writes of frequency, EQ, RX-mute and the analog output level — all confirmed on the bench. A controller holds the master slot with a 2 s keepalive and writes freely; a reference client and a shipped console-bridge adapter both drive it."
+        },
+        {
+          "rank": 2,
+          "item": "AF-out as a remote gain",
+          "note": "The writable output level makes the receiver behave like a remotely-gain-controlled preamp. We mapped a Yamaha DM3's remote head-amp gain onto it through our bridge and drove the receiver's output from the console — its level tracked the desk at 0 dB and +15 dB and back, confirmed on hardware. It is the first time this index moved a real signal."
+        },
+        {
+          "rank": 3,
+          "item": "A networked Fast Scan — if it can be captured",
+          "note": "WSM's G3 plugin names an `EWG3 Fast Scan Request` — a band scan run over this same protocol, which would turn the receiver into a remote spectrum probe for coordination. The capability is real in the binary; its wire format was not captured this session and is the most interesting thing still open."
+        },
+        {
+          "rank": 4,
+          "item": "The documented ASCII protocol on 53212 — a per-firmware maybe",
+          "note": "Firmware ≥ 1.7.0 is supposed to expose the richer telemetry surface — RF, AF, battery, pilot — as an ASCII push feed on 53212. Our unit does not answer it at all, so it is a per-firmware gamble, not a plan."
+        },
+        {
+          "rank": 5,
+          "item": "Nothing inside the receiver",
+          "note": "The receiver's own firmware was never read; every useful thing is on the network side of the box. There is no reason to open it for what the protocol already gives up."
+        }
+      ],
+      "verdict": "Sennheiser shipped two remote-control protocols for the G3 and documented the one this receiver does not run. The ASCII \"media control protocol\" on UDP 53212 — the surface every third-party integration targets — needs firmware ≥ 1.7.0 and drew silence from our EM 500 G3 on every probe. What actually drives it is the undocumented binary protocol Wireless Systems Manager speaks on UDP 8133: multicast discovery to the mDNS group with a decidedly non-mDNS payload, a config packet whose frequency is little-endian kHz and whose output level is an index rather than a dB value, a preset-bank plan handed over on a 25 kHz raster, and a single-master write lock that is coordination, not security. The whole thing is unauthenticated and was fully controllable from our own client the moment we held the master slot. The one genuinely useful actuator — the analog output level — we wired to a mixing desk's remote gain and drove the receiver from a DM3 on the bench, the first time this index made a real signal move. The telemetry half is only half-open: the ~12 Hz meter packet's RF-level byte is identified, but its audio, battery, mute and pilot fields stayed frozen because the transmitter never moved, and that — plus the Fast Scan wire format — is what a second bench session would finish.",
+      "openQuestions": [
+        "The rest of the meter packet. The RF-level byte is pinned, but audio level, transmitter battery, mute and pilot share the same ~12 Hz packet and sat byte-for-byte constant because the transmitter was static. Mapping them needs a session that varies the transmitter — walk it out of range, speak into it, mute it, run the battery down (battery shows as 0–3 bars, 0 flashing at low).",
+        "The Fast Scan wire format. WSM's plugin names an `EWG3 Fast Scan Request` and a `FastScanResult`, i.e. a networked band scan, but the request and response were not captured. This is the one path that would make the receiver a remote coordination probe rather than just a controllable output.",
+        "Whether G4, the 2000 series and the SR IEM receivers are byte-identical. They share the 8133 protocol and the WSM plugin family, but only the EM 500 G3 was on the bench; the field offsets are assumed to carry across, not tested.",
+        "The 4-byte message headers. They are constant per message type and read like per-command checksums, but the algorithm was not derived — a controller replays the captured constants rather than computing them, which is fine until a firmware or model changes one.",
+        "The squelch encoding. The config byte reads 20 where the panel shows 21 dB; near enough to look like an off-by-one or a different step base, but it was not written and read back across its range the way AF-out was."
+      ],
+      "traps": [
+        "Reaching for the documented protocol first. Every public integration and Sennheiser's own TI note point at ASCII on 53212, and it is the obvious place to start — against this receiver it is a dead port, silent on every probe, and an afternoon can vanish into a protocol the unit never implemented. The working surface is undocumented and on a different port.",
+        "Reading the AF-out byte as dB. It is an index: byte 6 is −6 dB, byte 12 is +12 dB (dB = 3·index − 24). A controller that writes the dB value straight into the byte sets the wrong level — writing 0 gives −24 dB, not 0 dB — and it only looks correct at +12, where index and dB coincide by a factor of three.",
+        "Writing a field without minding the name. The write packet's dirty-flag region sits close to the name field; a flag one byte wrong blanks the receiver's name to spaces and drops a \"no data\" placeholder into the channel label. It happened here once. Write only the fields whose flag offsets are proven, and never the name from a bare client.",
+        "Assuming the discovery multicast is mDNS. It goes to 224.0.0.251:8133 — the mDNS group — but it is a fixed Sennheiser `[servicecommand]devinfo` payload, and an mDNS parser pointed at it sees nothing. The port, not the group, is the tell.",
+        "Expecting writes to work while WSM is open. WSM holds the single master slot, and an outside controller's writes are accepted on the wire and silently discarded — no error, no reply, no change. The receiver has to be free of WSM, or WSM's keepalive has to lapse, before anything else can write.",
+        "Reading the preset-bank words as raw kHz. They are 16-bit little-endian codes on a 25 kHz raster — `code × 25 = kHz` — so a table read as literal kHz is off by a factor of 25 and lands nowhere near the band."
+      ]
     }
   ]
 }
