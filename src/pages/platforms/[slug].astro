@@ -24,6 +24,7 @@ const sections = [
   p.hardware.length > 0 && ['hardware', 'Hardware'],
   p.software.length > 0 && ['software', 'Software'],
   p.security.length > 0 && ['security', 'Update & security'],
+  (p.control ?? []).length > 0 && ['control', 'Control & discovery'],
   p.programmable.length > 0 && ['programmable', 'What is programmable'],
   openProjects.length > 0 && ['projects', 'Third-party open projects'],
   p.traps.length > 0 && ['traps', 'Traps'],
@@ -266,6 +267,34 @@ const schema = [
               disclosure and no exploit, bypass or circumvention technique is published here.
               Licensing and entitlement mechanisms are out of scope throughout — see
               <a href="/method/#boundaries">scope boundaries</a>.
+            </p>
+          </section>
+        )}
+
+        {(p.control ?? []).length > 0 && (
+          <section id="control">
+            <h2>Control &amp; discovery</h2>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr><th scope="col">Surface</th><th scope="col">Finding</th><th scope="col">Confidence</th></tr>
+                </thead>
+                <tbody>
+                  {(p.control ?? []).map((c) => (
+                    <tr>
+                      <td class="k">{c.label}</td>
+                      <td set:html={fmt(c.value)} />
+                      <td><span class={Conf(c.confidence).cls} title={Conf(c.confidence).note}>{Conf(c.confidence).label}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p class="prose" style="color:var(--ink-2);font-size:.93rem">
+              These rows describe how the device is controlled and discovered on the network,
+              observed by capturing traffic and running an open control client against a unit
+              on our own bench. They document protocol shape and behaviour, not any exploit,
+              bypass or circumvention technique.
             </p>
           </section>
         )}

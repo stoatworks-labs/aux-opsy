@@ -12,6 +12,7 @@ export const SITE = 'https://aux-opsy.com';
 type Row = { label: string; value: string; confidence: string };
 type Platform = (typeof data.platforms)[number] & {
   hardwareBasis?: string;
+  control?: Row[];
   openProjects?: { name: string; url: string; licence: string; activity: string; what: string; points: string[] }[];
 };
 
@@ -222,6 +223,7 @@ export function full(p: Platform): string[] {
   table('Hardware architecture', p.hardware as Row[]);
   table('Software architecture', p.software as Row[]);
   table('Update path and security model', p.security as Row[]);
+  table('Control and discovery', p.control as Row[]);
 
   if (p.security?.length) {
     lines.push(
