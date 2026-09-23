@@ -2067,6 +2067,191 @@
         "Expecting writes to work while WSM is open. WSM holds the single master slot, and an outside controller's writes are accepted on the wire and silently discarded — no error, no reply, no change. The receiver has to be free of WSM, or WSM's keepalive has to lapse, before anything else can write.",
         "Reading the preset-bank words as raw kHz. They are 16-bit little-endian codes on a 25 kHz raster — `code × 25 = kHz` — so a table read as literal kHz is off by a factor of 25 and lands nowhere near the band."
       ]
+    },
+    {
+      "id": "pixelhue-u5-series",
+      "updated": "2026-09-23",
+      "manufacturer": "Pixelhue",
+      "model": "U5 / U5 Pro / U5 mini event controllers",
+      "family": "U-series event controllers — U5, U5 Pro, U5 mini and the older U3",
+      "class": "Switcher control console",
+      "introduced": 2023,
+      "status": "partial",
+      "tags": [
+        "UCenter HTTP + WebSocket",
+        "Semantic key protocol",
+        "Undocumented WebSocket",
+        "Embedded Companion",
+        "Windows mini-PC inside",
+        "RK3576",
+        "Panel is an IP device"
+      ],
+      "summary": "The U-series are control consoles, not switchers — and their control service already publishes the whole panel. Every key, the T-bar, the faders and the encoders reach any WebSocket client that asks, and above that raw stream sits a semantic protocol: a host hands the console a model of screens, layers, inputs and presets, the console labels, pages and lights its own keys from it, and it reports what the operator meant — TAKE, CUT, \"put input 2 on the selected layer\" — carrying back the identities the host published. Nothing ties that host to a Pixelhue switcher.",
+      "headline": "The console is a peer, not a keyboard. NovaStar's `UCenter` service — HTTP and WebSocket on **19999** on the U5 / U5 Pro, **8088** on the mini — accepts a whole switcher model over `PUT data-change`, draws the panel from it, and answers each press with a numbered **intent** on WebSocket tag `0x00101307` (531 take, 532 cut, 300 input switch, 401 recall) that carries back the `uid`, `id` and `text` it was given. The vendor's Bitfocus Companion is fenced into 24 keys of the U5 Pro's ~203; the protocol underneath has no such fence.",
+      "method": "Two bases, and **no console on the bench** — nothing on this page was read off a running unit. The first is static: the firmware packages Pixelhue publishes (U5 mini V1.0.3, U3 V4.0.6, U5 and U5 Pro NewOS V1.8.0 of 2026-01-08) were unpacked down to their filesystems and read, and the control application inside them ships its Vite source maps, so the command vocabulary, the REST calls and the payload formatters were read as the vendor's original TypeScript rather than reconstructed from a bundle. The second is the vendor's own control service **running**: the U5 Pro's `UCenter` binary, taken from that image, in a Windows 11 VM, and the native macOS build PixelFlow installs, driven by the vendor's own on-screen virtual U5. Everything labelled *verified* from that second basis was observed on the wire from that service — which, like a switcher simulator, is not hardware. The U3 was identified and left: its Apollo binary protocol was not pursued.",
+      "artifacts": [
+        "Pixelhue firmware packages `U5MINI V1.0.3`, `U3_full_update_V4.0.6.STD`, `U5_NewOS_V1.8.0_20260108` and `U5Pro_NewOS_V1.8.0_20260108` — NovaStar `Nova` containers around a squashfs (mini), ext4 and legacy blobs (U3), and a Clonezilla image of a whole Windows install (U5 / U5 Pro)",
+        "`ucenter_win.exe` / `ucenter_darwin_arm64` — the Go control service; its `ncp.toml`, `runtime.toml` and the key XML (`key_function.xml`, `key_mini.xml`, `midi_key.xml`) that carry the bus map, the key state machine and the Music-MIDI layout",
+        "`pixelflow.exe` (Electron) — its `app.asar`, including the Unico web app's source maps (6,191 original TypeScript files), the on-screen keyboard key tables and a WebSocket relay for the built-in Companion",
+        "The mini's `nvcontroller` (Go, aarch64) and `Lcd` (Qt) processes, the embedded headless Companion 4.3.2 bundle, and Pixelhue's open-source Companion surface plugin and switcher module, whose sources are plain JavaScript",
+        "Wire traffic from the vendor's own `UCenter` running headless and from its virtual U5 panel, decoded with our own NOVA-frame codec, plus a reference client that publishes a model and logs the intents that come back"
+      ],
+      "hardware": [
+        {
+          "label": "The U5 and U5 Pro are Windows PCs in a console",
+          "value": "Inside is a Maxtang TL10 mini-PC — Intel i7-1165G7, 16 GB — booting Windows from NTFS. The update package is a Clonezilla / partclone image of the whole disk, not a firmware blob; the console software is ordinary Windows executables under `Program Files`",
+          "confidence": "verified"
+        },
+        {
+          "label": "The U5 mini is a Rockchip Linux box",
+          "value": "Rockchip **RK3576**, a Yocto build on squashfs. The key grid is 4×10 keys over a single LCD, drawn by a Qt `Lcd` process; the T-bar and keypad are kernel modules",
+          "confidence": "verified"
+        },
+        {
+          "label": "The U3 is two generations under one name",
+          "value": "An RK3288 generation shipped as legacy image blobs and an RK3588 generation on ext4, both running X11 with a Qt application (`Triton`) — NovaStar's Apollo desktop stack, with per-key OLED labels and a matrix keypad device",
+          "confidence": "verified"
+        },
+        {
+          "label": "The panel is a network device inside the box",
+          "value": "`ncp.toml` places the panel MCU at `10.10.10.16` and an FPGA at `10.10.10.32` on an internal network where the PC is `10.10.10.8`, talking UDP on 18010. With no panel present the service loops on an MCU handshake and never opens its API. Separately, USB-serial microcontrollers (FT232R, 115200 8N1) carry the main panel, a MIDI board and a GD32 that enumerates as `TimeCode-USB_MIDI` behind the rear MIDI DEVICE port",
+          "confidence": "verified"
+        },
+        {
+          "label": "Controls",
+          "value": "U5 Pro: ~203 LCD keys in 13 areas, a numeric pad, four encoders, eight faders and a T-bar. U5: 87 keys and a T-bar. U5 mini: 66 keys and a T-bar",
+          "confidence": "public"
+        }
+      ],
+      "software": [
+        {
+          "label": "One service owns the panel",
+          "value": "`UCenter` (Go) serves HTTP and WebSocket under `/unico/v1/` — **19999** on the U5 / U5 Pro, **8088** on the mini's `nvcontroller` — plus TLS on 19998 for health and config sharing. The mini's binary carries the same routes and the same Go structs (`RInput`, `RScreen`, `RPreset`, `RLayer`, `data-change`, `keyPosition`), so the protocol belongs to the framework, not to Windows",
+          "confidence": "verified"
+        },
+        {
+          "label": "The NOVA frame",
+          "value": "Every WebSocket message is one binary frame: `NOVA`, a 22-byte header carrying the body length and two CRC-16/X-25s (body and head), a sequence id, then two TLVs — a `0x00102101` header TLV holding `{\"seq\",\"sn\",\"source\"}` JSON, and a TLV whose 32-bit code is the message tag and whose value is the JSON body. Our codec, written from shipped code, agrees with a running `UCenter` byte for byte",
+          "confidence": "verified"
+        },
+        {
+          "label": "One socket carries both layers",
+          "value": "A client on `ws://…/unico/v1/ucenter/ws?client-type=5` receives, without subscribing, a full key-state dump on connect and every change after it (`0x00101301`: `{key, state, text, page, businessID, open, businessType}`) **and** the semantic command stream (`0x00101307`). Type 5 is the on-screen keyboard's; it is not in the web app's own client enum and it is not a narrower feed",
+          "confidence": "verified"
+        },
+        {
+          "label": "Publish a model, get intents back",
+          "value": "`PUT ucenter/video-station/data-change` takes `{screens, layers, inputs, presets, cues, medias, funcs}`. A model of four screens, eight inputs and eight presets — none of them Pixelhue devices — was published and the console bound, labelled and paged its own keys from it; pressing them returned `101 {uid:\"S2\"}`, `300 {id:2, text:\"LIVE_2\"}` and `401 {id:2}` carrying exactly the identities we had published. There is no key-id table to maintain on the host side",
+          "confidence": "verified"
+        },
+        {
+          "label": "The command vocabulary",
+          "value": "Numbered by module, first digit first: 100–105 screen (101 select, 102 activate, 103 unselect, 104 delete), 200–203 layer, 300 input switch, 400–403 preset (401 recall), 500–508 layer geometry, 509–533 functions (517 freeze, 518 FTB, 529 match PGM, 530 PGM edit, **531 take**, **532 cut**, 533 swap), 534–550 keypad, 551–554 timecode, 555–568 PTZ, 569–573 cue transport, 590/591 Companion on/off. Injected TAKE, CUT, FTB, FRZ, MATCH PGM and PGM EDIT each produced the code the enum predicts",
+          "confidence": "verified"
+        },
+        {
+          "label": "The console runs its own state machine",
+          "value": "`key_function.xml` maps (key mode, business state, gesture) → command: a short press on an unselected screen is 101, on a selected one 102, a long press 103. DEL and SAVE TO arm a mode that changes what the next bus key reports (104 delete screen, 400 save preset, 403 delete preset). The host never implements gestures — it publishes `selected` and reads the result",
+          "confidence": "verified"
+        },
+        {
+          "label": "T-bar, faders and encoders",
+          "value": "From the virtual panel the T-bar arrives on `0x00101358` as `{direction 1|2, percent, mapValue 0–4096}`, not on the `0x00101304` the web app's tag list names. Faders and encoders are **dropped** until bound: after `POST midi/binding` with `{unique, type, index}` every client receives `0x0010031c {unique, value, frameValue}` — percent for a fader, ±1 per detent for an encoder",
+          "confidence": "verified"
+        },
+        {
+          "label": "Key injection over REST",
+          "value": "`PUT ucenter/video-station/key/action` with `[{key, state}]` is how the vendor's virtual console presses keys, and an injected press is indistinguishable downstream from a real one — which is what makes a whole console testable with no panel attached. `key/response-state {state:1}` tells the service to stop acting on keys itself",
+          "confidence": "verified"
+        },
+        {
+          "label": "Key images are imported from a path, not bytes",
+          "value": "`key/image/import` is multipart with a `srcPath` — a file on the console's own filesystem. Painting a key from off-box needs the file to reach the console first, which is why the model route above matters more than image painting",
+          "confidence": "verified"
+        },
+        {
+          "label": "Companion is built in, and fenced",
+          "value": "The mini embeds headless Companion 4.3.2 and exposes its key grid as a network Companion surface on **TCP 17100** (mDNS `_pixelhue._tcp`; frames start `10 30 50 00`, JSON in a TLV, 72×72 PNGs down, `{type, column, row}` up, raw `ping`/`pong`). The U5 / U5 Pro run a custom Companion 3.5.0 whose surface reaches the panel through a WebSocket relay on **0.0.0.0:9999**, and only a 6×4 block (Pro) or 3×4 block (U5) of keys while the Companion key is on",
+          "confidence": "verified"
+        },
+        {
+          "label": "Music MIDI is a configured output, off by default",
+          "value": "`midi_key.xml` lays the panel out as MIDI: channels 1–8 the key areas as paged notes, 9 the encoders, 10 the faders, 11 the T-bar. It is disabled in the shipped config. Whether the continuous controls go out as notes or control changes is not settled — the XML calls every field `Note`",
+          "confidence": "unknown"
+        },
+        {
+          "label": "The U3 speaks something else",
+          "value": "The U3's Triton application uses NovaStar's native binary Apollo protocol over TCP and UDP, with device profiles only for Pixelhue F-series switchers. Its message format was not determined",
+          "confidence": "unknown"
+        },
+        {
+          "label": "Model ids",
+          "value": "U3 29698 / 29699, U5 29701, U5 Pro 29703, U5 mini 29711 — alongside the switchers the same stack drives (P10 28945, P20 28944, P80 30006, Q8 29974)",
+          "confidence": "verified"
+        }
+      ],
+      "security": [
+        {
+          "label": "The panel stream and key injection take no credential",
+          "value": "On the vendor's own service, the `client-type=5` WebSocket needed no token and `PUT key/action` injected presses with none. Pixelhue's open-source switcher module signs a JWT for its devices, but no call this work made to `UCenter` asked for one. Whether 19999 is reachable from the LAN on a shipped U5 is not known — it binds `0.0.0.0`, and the mini's 8088 is plainly meant for the LAN",
+          "confidence": "verified"
+        },
+        {
+          "label": "The Companion paths are open too",
+          "value": "The U5's Companion relay binds `0.0.0.0:9999` and pairs clients by a `clientId` string they announce themselves; the mini's 17100 surface has no authentication in the vendor's own plugin, which pre-empts other connections rather than refusing them. A control-VLAN device by construction",
+          "confidence": "verified"
+        },
+        {
+          "label": "Update packages carry integrity, not identity",
+          "value": "Each image inside a `Nova` container is preceded by an md5 of its payload. That is an integrity check; no signature was looked for beyond it in this pass",
+          "confidence": "verified"
+        }
+      ],
+      "programmable": [
+        {
+          "rank": 1,
+          "item": "Publish a switcher model to UCenter and answer its intents",
+          "note": "The route the vendor's own app uses, and the one with no fence: the console labels, pages and lights its own keys from whatever model it is given and returns numbered intents carrying the host's identities. Proven against the vendor's service with an Analog Way LivePremier model driving a LivePremier simulator — screen select, input to preview, take, cut, match PGM, recall, store, freeze, FTB and the T-bar — with no key painting and no Pixelhue switcher anywhere."
+        },
+        {
+          "rank": 2,
+          "item": "The raw key stream plus `key/action`",
+          "note": "The same socket reports every key by id and business state, and REST injects presses. For a host that wants a plain button box, this is it — and injection makes the whole chain testable with no console."
+        },
+        {
+          "rank": 3,
+          "item": "The built-in Companion surfaces",
+          "note": "The mini is already a network Companion surface on 17100 that any Companion can point at. On the U5 / U5 Pro the built-in Companion is useful but confined to 24 or 12 keys, and gets no T-bar, faders or encoders."
+        },
+        {
+          "rank": 4,
+          "item": "Music MIDI",
+          "note": "A documented-in-config USB-MIDI layout for the whole panel, off by default. Serviceable for a lighting or media server; the continuous-control encoding is not settled."
+        },
+        {
+          "rank": 5,
+          "item": "The U3",
+          "note": "A closed binary protocol and no Companion. The hardest of the four and not pursued."
+        }
+      ],
+      "verdict": "Pixelhue built its consoles around a service that already does the hard part of being someone else's control surface. `UCenter` holds a model of the show, draws the panel from it, runs its own gesture and mode logic, and reports intents rather than button ids — and it takes that model from whoever publishes one. Published a LivePremier's screens, inputs and memories, it labelled its keys with them and handed back `S2`, `LIVE_2` and `Memory 2` when they were pressed; the brand of switcher underneath is a host-side decision. The U5 and U5 Pro turn out to be Windows PCs, the mini a Rockchip Linux box, and both run the same Go framework with the same structs, so one integration covers the line; the U3 is a different, closed stack. The fences are all Companion's: the built-in Companion sees 24 keys of ~203, but the protocol beneath it sees every key, the T-bar and — once bound — every fader and encoder. All of this is the vendor's own service observed on the wire, not a console; lamps, key displays, the physical T-bar's tag and whether the U5's port answers off-box are what a unit on the bench would settle.",
+      "openQuestions": [
+        "A real console. Everything here is the vendor's control service with its panel check off, or its virtual panel — what the physical key displays and lamps do with a published model, and whether the real T-bar reports on `0x00101358` like the virtual one or on the `0x00101304` the web app names, are unobserved.",
+        "Whether 19999 answers from the LAN on a shipped U5 / U5 Pro. It binds all interfaces; the console's own firewall configuration was not examined. If it does not, U5 integration means software on the console, where the mini needs none.",
+        "The mini's `nvcontroller` has never been run. Its structs, routes and key XML match the Pro's and add only the area-switch keys its eight-wide buses need; whether it too refuses to start without its panel, and whether its LCD renders business labels or only Companion images, is open.",
+        "Layer names and the cue list. Layers bind only on the active screen and carry no label into the panel, and `cues`, `medias` and `funcs` were only ever published empty.",
+        "The swallowed press. Rarely, an injected down/up pair in the right order produces no command. It was caught on the vendor's service, not our client, and would not reproduce on demand.",
+        "The U3's Apollo protocol."
+      ],
+      "traps": [
+        "Publishing 0-based key positions. `index` is 1-based; 0-based silently drops the first object of every bus — Screen 1 vanished and key 0 showed Screen 2 — with no error anywhere. The console's own `key_mini.xml` says 1-based in writing; it was learned from the panel first.",
+        "Trusting `ok` on an empty model. Empty arrays always validate, so `{}` answering ok proves nothing. The useful signal is the failure: the service returns Go unmarshal errors naming the struct and field it rejected (`RInput`, `inputs.hasBackup`), which is the fastest way to learn the schema.",
+        "Two publishers. The model is last-writer-wins, and the vendor's own PixelFlow main window republishes its project a second after its virtual panel opens — so both apps act on every press and the keys show the other app's buses. And a new vendor client connecting wipes the published model without telling the publisher, which has to notice its labels vanish and republish.",
+        "Taking the vendor's tag list at its word for the T-bar. The web app's whitelist names `0x00101304`; the virtual panel's T-bar arrives on `0x00101358`. Code keyed to the documented tag hears nothing.",
+        "Expecting fader and encoder moves without a binding. Unbound, they are dropped inside the service and no client hears them — the silence looks exactly like a broken socket.",
+        "Sending `ip` / `port` headers to the MIDI routes on the macOS build. That build's REST proxies to the device the headers name; naming itself, the MIDI family loops until the process runs out of file descriptors.",
+        "Reading the key-state item from an older record. It carries `businessID`, `open` and `businessType`, not the `icon` field the first teardown assumed; and a held key reports only its repeat code, never the click code, so a non-repeating action has to fire on the first repeat."
+      ]
     }
   ]
 }

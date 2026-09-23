@@ -57,6 +57,29 @@ for the same reason, by choice rather than for lack of one.
 Deployed by hand the usual way (`cf-run npm run deploy`, Cloudflare version `ab20ce7c`); live on
 aux-opsy.com and every surface verified.
 
+## The 2026-09-23 entry — Pixelhue U-series, the first control console
+
+`pixelhue-u5-series`, from `~/reverse-engineering/video/pixelhue-re` (local, no remote). A new
+class, **`Switcher control console`** — it matches `/switcher/i`, so it joins the video strand and
+the site's self-description does not change; its related links come from that strand plus the
+shared `Undocumented WebSocket` tag with the LivePremier.
+
+**No `hardwareBasis`, no `measured` rows — there is no console on the bench.** Half the rows came
+from the vendor's own `UCenter` service *running* (in a Windows VM, and the native macOS build
+PixelFlow installs) and were observed on the wire. That is the simulator rule exactly: `verified`
+at best, and the method line says so. The derived "Hardware in our hands: none — every finding
+below came out of a file" line is slightly too strong for this entry; the method paragraph
+corrects it in the entry's own words, the way the dLive's headline corrects `partial`.
+
+Boundary check: the protocol is on documented ports with no protection mechanism, so it is in the
+same class as the Analog Way control material. Left out on purpose: the private bridge repos by
+name, and the exact procedure for running the service without its panel beyond "the vendor's own
+config switch".
+
+This entry sat committed on a never-pushed `claude/pixelhue-u5` branch from 09-23 until it was
+found by `worktree-sweep` and landed on main on **2026-10-04**, after the ATEM pass. Landing it
+did not deploy it — the site deploys by hand.
+
 ## The 2026-09-07 pass — the show-file strand
 
 Seven entries gained *what the console writes to disk*, out of `patchferret-research`:
