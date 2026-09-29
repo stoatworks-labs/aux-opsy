@@ -1,6 +1,7 @@
 # Aux-opsy
 
-> **AI-assisted project.** This codebase was created with [Claude Code](https://claude.com/claude-code).
+> **AI-assisted project.** This codebase was created with [Claude](https://claude.com/claude-code)
+> (Anthropic), directed and reviewed by a human author.
 > The site builds and every page has been rendered and checked in a browser; the *technical
 > content* is drawn from private research repositories and, as the site itself says
 > throughout, most of it has never been verified against physical hardware. The six
