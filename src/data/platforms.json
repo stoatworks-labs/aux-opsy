@@ -1549,13 +1549,14 @@
     },
     {
       "id": "blackmagic-atem",
-      "updated": "2026-08-14",
+      "updated": "2026-10-04",
       "manufacturer": "Blackmagic Design",
       "model": "ATEM (switcher family)",
       "family": "ATEM — Production/Television Studio, Constellation, Mini/SDI",
       "class": "Live production video switcher",
       "introduced": 2012,
       "status": "documented",
+      "hardwareBasis": "One ATEM Mini Extreme ISO on our bench, read over the documented UDP control protocol with our own client on 2026-09-22 — protocol 9.6, model enum 17, 29 inputs — and exercised from the other side by standing up an emulated switcher that the stock control software connects to and drives. The decompressed firmware images and the encrypted packages below are unchanged and remain file-only; the unit was never opened.",
       "tags": [
         "Xilinx FPGA",
         "PowerPC / MicroBlaze / ARM",
@@ -1565,7 +1566,7 @@
       ],
       "summary": "A decade of vision mixers that are all the same idea: a Xilinx FPGA does the video, and a CPU inside that FPGA runs a bare-metal control stack. The CPU changes generation to generation (PowerPC, then MicroBlaze, then ARM) and so does the fabric under it — Virtex-5, Virtex-6, Kintex-7, Zynq — but the FPGA-does-everything shape never does.",
       "headline": "Every switcher update pairs one Xilinx bitstream (sync word `AA 99 55 66`) with one CPU image, and the bitstream **names the part it is for**: a PPC440 in a Virtex-5 FXT on the first M/E frames, then MicroBlaze in a Virtex-6 and then a Kintex-7, then ARM in a Zynq-7000. The mixer was never a computer with a video card; it was always an FPGA with a CPU inside it — and the CPU was inside it even on the generation this page previously read as a separate ARM.",
-      "method": "Static analysis of the macOS ATEM Setup 10.2.1 installer (January 2026). Its `Contents/Resources` holds 43 firmware packages plus per-language sub-packages, each a custom container keyed by the device's USB product ID under Blackmagic's vendor ID `0x1EDB`. The container was reversed from scratch; older payloads decompress to raw images that self-identify, and the published Switchers SDK headers supplied the control-model vocabulary. No hardware was inspected and no encrypted payload was decrypted.",
+      "method": "Static analysis of the macOS ATEM Setup 10.2.1 installer (January 2026). Its `Contents/Resources` holds 43 firmware packages plus per-language sub-packages, each a custom container keyed by the device's USB product ID under Blackmagic's vendor ID `0x1EDB`. The container was reversed from scratch; older payloads decompress to raw images that self-identify, and the published Switchers SDK headers supplied the control-model vocabulary. No encrypted payload was decrypted. The measured rows were added later from a running ATEM Mini Extreme ISO on our own bench; every static finding here was taken with no hardware in hand.",
       "artifacts": [
         "`ATEM Setup.app/Contents/Resources/data-*.bin` — 43 firmware packages, product-ID-keyed (`data-bd48.bin` … `data-bf01.bin`)",
         "The container header: 32-byte digest, then chained blocks, each `0xBDBD`-tagged with `zlib`/stored payload and 24-byte applies-to records carrying VID `0x1EDB`, the USB PID and a firmware-version integer",
@@ -1582,6 +1583,11 @@
         {
           "label": "FPGA parts — read, not inferred",
           "value": "Every one of these bitstreams **names its own device**. A Xilinx configuration image writes the target JTAG IDCODE to configuration register `0x0C` before it writes any frame data, so \"a raw `.bin` with no part name in it\" still states its part in a fixed place. Walking the packet stream of all 43 packages gives, per generation: **XC5VFX130T** (`0x03300093`) with the PowerPC; **XC6VLX75T** (`0x04244093`) with MicroBlaze big-endian; **XC7K325T** (`0x03651093`, two models) and **XC7K420T** (`0x03752093`) with MicroBlaze little-endian; **XC7Z010** (`0x03722093`) with the ARM; and **XC7Z015** (`0x0373B093`) on the newest frames, five of which pair it with a second FPGA — **XC7A100T** (`0x03631093`) or **XC7A25T** (`0x037C2093`). Part names resolved against Xilinx UG470 Table 1-1 and UG360 Table 6-13",
+          "confidence": "verified"
+        },
+        {
+          "label": "Encrypted generation — silicon, from a teardown",
+          "value": "One of the encrypted frames has since been opened: an **ATEM Mini Extreme ISO** carries **two Xilinx Zynq UltraScale+ XCZU5EV** MPSoCs in the SFVC784 package, read from the lid marking (`XCZU5EV / SFVC784AAZ`) — the EV grade, so the hardened video-codec block is present. Per the same teardown's parts list, each device sits beside Samsung DDR3 and a Macronix MX25L3233F 4 MiB boot NOR, with an 8 GB Samsung eMMC (KLM8G1GETF) on one of the two. So the move onto Zynq held into this generation but changed tier — from the Zynq-7000 of the earlier ARM frames to a Zynq UltraScale+ MPSoC, programmable logic beside a hardened quad-core ARM. This is a teardown reading of the board, not a package we can decrypt; the bitstream itself stays sealed",
           "confidence": "verified"
         },
         {
@@ -1640,6 +1646,11 @@
           "label": "Firmware version numbers",
           "value": "Each applies-to record carries a monotonic version integer, so the family's age is legible from the files: MicroBlaze Television Studio = 67, Production Studio 4K = 314, Television Studio Pro 4K = 674, Broadcast Studio 4K / Constellation = 1378, and the shared modern switcher application = 1951",
           "confidence": "verified"
+        },
+        {
+          "label": "Read from a live unit",
+          "value": "An **ATEM Mini Extreme ISO** on our own bench answers the documented UDP state-sync and reports **protocol version 9.6**, model enum **17** and **29 inputs**, its state dump carrying exactly the clear-text attribute names (`ProgramInput`, `AuxSource`, …) the static analysis predicted. This is the first reading on this page taken off a running ATEM rather than from the installer",
+          "confidence": "measured"
         }
       ],
       "security": [
@@ -1683,8 +1694,8 @@
       ],
       "verdict": "Hardware, consistently and for a decade. The ATEM line is a single architectural idea re-spun across four CPU generations: a Xilinx FPGA carries the entire video path and a CPU that lives inside or beside it — PowerPC hardcore, then MicroBlaze soft core in both endiannesses, then a discrete ARM — runs a bare-metal control stack with its own TCP/IP and mDNS. There is no operating system to speak of and, on the older frames, no firmware protection beyond an integrity digest; the newest models close that with an encrypted image. What makes the family approachable is entirely on the outside: a published SDK over a stable UDP state-sync protocol, so the interesting surface is the network, not the silicon.",
       "openQuestions": [
-        "What the encrypted generation actually contains. The construction is visible from the outside (single stored high-entropy stream, not block-aligned); the plaintext was neither recovered nor examined here, so whether the modern frames kept the FPGA-plus-CPU shape or changed it is unconfirmed.",
-        "The exact Xilinx parts on the **encrypted** generation. The plaintext packages state their device in the bitstream's IDCODE packet and are settled; the ~20 encrypted packages cannot be read at all, so whether the newest frames stayed on Zynq is unconfirmed. The package, speed grade and die revision are not in the IDCODE either — that field names the device, not the ordering part number.",
+        "What the encrypted generation's images actually contain. The construction is visible from the outside (single stored high-entropy stream, not block-aligned), and the teardown now settles the silicon — the shape held as a Zynq UltraScale+ MPSoC — but the plaintext was neither recovered nor examined here, so the image contents themselves remain unread.",
+        "The exact Xilinx parts across the rest of the **encrypted** generation. The plaintext packages state their device in the bitstream's IDCODE packet and are settled, and one encrypted frame — the Mini Extreme ISO — has now been read from a teardown (two Zynq UltraScale+ XCZU5EV); but the other ~20 packages cannot be read at all, and the package, speed grade and die revision are never in an IDCODE field anyway — that names the device, not the ordering part number.",
         "Whether the modern housekeeping MCU is really an 8-bit AVR or an AVR-cored SoC. The vector table is unmistakably AVR; the surrounding board role is a guess.",
         "The wire-protocol command codes. The firmware stores field names in clear text but not the four-character command tags, which are built from a table — so the exact opcodes were taken from the SDK's failure enums, not confirmed against the images.",
         "The USB-PID identities of the ~20 encrypted packages, which cannot self-identify. They were bounded as a set and dated by version number, but each one was not individually tied to a model name."
