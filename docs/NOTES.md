@@ -77,8 +77,11 @@ name, and the exact procedure for running the service without its panel beyond "
 config switch".
 
 This entry sat committed on a never-pushed `claude/pixelhue-u5` branch from 09-23 until it was
-found by `worktree-sweep` and landed on main on **2026-10-04**, after the ATEM pass. Landing it
-did not deploy it — the site deploys by hand.
+found by `worktree-sweep` and landed on main on **2026-10-04**, after the ATEM pass. Deployed by
+hand the same day from a clean worktree of main (`cf-run npm run deploy`, Cloudflare version
+`c797b9c9`); live on aux-opsy.com and verified on the entry page, `/platforms/`,
+`/api/platforms.json` and the sitemap. The home page lists only four featured platforms, so it
+is the wrong place to look for a new entry.
 
 ## The 2026-09-07 pass — the show-file strand
 
