@@ -21,6 +21,42 @@ so never hard-code a count in the pages).
 **Preview config `aux-opsy` on port 4531 was NOT in `~/.claude/launch.json`** despite this
 file previously claiming it was — added 2026-08-14. Verify before assuming it is there.
 
+## The 2026-10-04 pass — the ATEM's first bench reading
+
+The **Blackmagic ATEM** entry was file-only from the start — its method line said so in as many
+words: "No hardware was inspected." We now own a running **ATEM Mini Extreme ISO**, so it gained
+its first `measured` content and became the **ninth `hardwareBasis` platform** (the derived
+"hardware in our hands" count rolled eight→nine on its own, across the index, `/method/` and the
+feeds; `spell()` did the rest). No new entry and no new route — this is depth on the ATEM page,
+not a new platform.
+
+Two rows, on the two axes that 08-14 keeps apart. The **`measured`** one is read straight off the
+unit over the documented UDP control protocol with our own client: protocol 9.6, model enum 17,
+29 inputs, and a state dump whose clear-text attribute names are exactly the ones the installer
+teardown had predicted — the first reading on this page taken off a running ATEM rather than from
+a file. The **`verified`** one records the encrypted generation's silicon from a teardown of the
+same model: two Xilinx **Zynq UltraScale+ XCZU5EV** (SFVC784), with DDR3, a Macronix boot NOR and
+an 8 GB eMMC off the board's parts list. That answers the entry's own open question — the newest
+frames did not leave Zynq, they moved up a tier, 7000 → UltraScale+.
+
+The 08-14 rule held, as ever: owning the unit does not upgrade the static analysis. The
+decompressed-image rows stay `verified`, the housekeeping-MCU guess stays `inferred`, and the
+teardown silicon is `verified` rather than `measured` because it was read off teardown photography
+and a parts list, not a unit we opened ourselves — only the live wire reads are `measured`.
+Nothing was decrypted; the method line now says "No encrypted payload was decrypted" and that the
+measured rows came off a bench unit while every static finding did not.
+
+**What stayed off the site, on purpose.** There is a separate, private line of ATEM work — loading
+our own firmware over the external USB recovery port — that reverses the update container's keying
+and delivery. None of it goes here: it is firmware circumvention, nothing is actually decrypted
+(the plaintext still needs a flash dump we have not taken), and publishing it would contradict
+this very entry's "no encrypted payload was decrypted" boundary — the same content boundary that
+keeps the licensing and entitlement work off the site. The keyed outer-digest finding was left out
+for the same reason, by choice rather than for lack of one.
+
+Deployed by hand the usual way (`cf-run npm run deploy`, Cloudflare version `ab20ce7c`); live on
+aux-opsy.com and every surface verified.
+
 ## The 2026-09-07 pass — the show-file strand
 
 Seven entries gained *what the console writes to disk*, out of `patchferret-research`:
