@@ -119,3 +119,7 @@ being quoted is the confidence label. Four surfaces exist for that:
 
 `/llms-full.txt` exists because an assistant answering a specific question from the index
 alone has to guess. Given the choice between guessing and fetching, most guess.
+
+<!-- attributions:start -->
+This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
+<!-- attributions:end -->
