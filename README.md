@@ -4,7 +4,7 @@
 > (Anthropic), directed and reviewed by a human author.
 > The site builds, and every page has been rendered and checked in a browser. The *technical
 > content* comes from private research repositories and, as the site itself says throughout,
-> most of it has never been verified against physical hardware. The six platforms where the
+> most of it has never been verified against physical hardware. The nine platforms where the
 > hardware was in my hands are labelled row by row and named on `/method/`, and nothing
 > anywhere has been opened.
 
