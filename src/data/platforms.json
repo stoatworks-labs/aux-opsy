@@ -123,7 +123,7 @@
 
     {
       "id": "yamaha-dm3",
-      "updated": "2026-09-15",
+      "updated": "2026-10-19",
       "manufacturer": "Yamaha",
       "model": "DM3",
       "family": "DM series",
@@ -141,7 +141,7 @@
         "**DM3 Editor V3** — 21 parameter descriptors under `Resources/Descriptor/mms_*.xml`, 15 factory `.dm3s` scenes and 263 `.dm3p` presets, all shipped with the free editor",
         "Yamaha's published Audix QuickPro preset pack for the TF series — 28 `.tfp` files, a public download, and the sample set the container layout was derived from and validated against",
         "Packet captures from the 2026-09-15 bench session -- SCP, OSC, YSDP and the DM3 Editor's MMS sync, in the private `stoatworks-labs/dante-captures` repo (`yamaha-dm3/`, `yamaha-dm3-editor/`)",
-        "**Dante-BabelBox v0.3.0** -- a shipped, signed cross-vendor Dante control bridge whose `yamaha-dm3-scp` adapter was validated against this console"
+        "**Dante-BabelBox v0.5.0** -- a shipped, signed cross-vendor Dante control bridge whose `yamaha-dm3-scp` adapter was validated against this console"
       ],
       "hardware": [
         { "label": "Application processor", "value": "Runs a Linux userland — component 1 is an 88 MB rootfs tarball", "confidence": "verified" },
@@ -166,7 +166,7 @@
         { "label": "Encryption", "value": "None — every component is zlib, and unpacks with a 60-line script", "confidence": "verified" }
       ],
       "control": [
-        { "label": "Remote control -- SCP", "value": "The DM3's primary control surface: a newline-delimited ASCII command protocol on **TCP 49280** (`devinfo`, `get`/`set`, `prminfo`, `ss*` scene ops). Head-amp gain (`IO:Current/InCh/HAGain`, whole dB 0-64) and phantom (`48VOn`) were **read and written** on a real DM3, each `set` confirmed by an `OK` echo carrying the value and an unsolicited `NOTIFY` broadcast to every other connected client. The console self-describes its whole parameter space over `prminfo` -- 177 parameters -- so no fixed table is needed. This is the same protocol family Yamaha's R Remote speaks to the R-series.", "confidence": "measured" },
+        { "label": "Remote control -- SCP", "value": "The DM3's primary control surface: a newline-delimited ASCII command protocol on **TCP 49280** (`devinfo`, `get`/`set`, `prminfo`, `ss*` scene ops). Head-amp gain (`IO:Current/InCh/HAGain`, whole dB 0-64) and phantom (`48VOn`) were **read and written** on a real DM3, each `set` confirmed by an `OK` echo carrying the value and an unsolicited `NOTIFY` broadcast to every other connected client. The console self-describes its whole parameter space over `prminfo` -- 177 parameters -- so no fixed table is needed, and across those 177 the preamp surface is head-amp **analogue** gain and phantom only: there is no per-channel digital input trim. A DM3 can therefore originate a gain change across a multi-console Dante system, but has nothing of its own to trim when another desk moves its preamp. This is the same protocol family Yamaha's R Remote speaks to the R-series.", "confidence": "measured" },
         { "label": "Remote control -- OSC", "value": "A second, weaker surface on **UDP 49900** (`/yosc:req/...`, replies `/yosc:ok/...`). Reads work, but a `set` is unacknowledged and the console emits no unsolicited OSC, so there is no change feed. Reply values for `48VOn` and the device-status fields come back as OSC **int64** (`h`), not int32. Confirmed on the bench; SCP is the better transport for exactly these reasons.", "confidence": "measured" },
         { "label": "Discovery -- YSDP", "value": "Yamaha devices announce over **UDP 54330** with a `YSDP`-magic datagram (sender IP + MAC, the service string `_ypa-scp`, manufacturer, model, unit-ID and name), and answer a controller's query the same way -- this is **not** Bonjour/mDNS, which is what a naive discovery would look for. R Remote and the DM3 both use it, and only one Yamaha control app can hold the port per host. Captured from the DM3 and R Remote.", "confidence": "measured" },
         { "label": "Editor sync -- MMS over TCP", "value": "DM3 Editor mirrors the whole console over a third protocol: the **MMS parameter framework serialized on TCP 50368**, message tags `EEVT` (events/keepalive), `MSTS`, `MPRC`, `MMIX`, `MVOL`, `MSCL`, `MSUP` -- the same `mms_*.xml` framework the firmware carries, on the wire. A full ~3.3 MB state pull on connect, bidirectional keepalive while online, and live push of external changes (an SCP write made from another client) were all captured.", "confidence": "measured" },
@@ -599,7 +599,7 @@
     },
     {
       "id": "allen-heath-ahm",
-      "updated": "2026-08-14",
+      "updated": "2026-10-19",
       "manufacturer": "Allen & Heath",
       "model": "AHM-16 / AHM-32 / AHM-64",
       "family": "AHM series",
@@ -609,12 +609,12 @@
       "tags": ["Zone-based DSP", "System Manager .cfg", "Published TCP protocol", "Silicon unidentified", "Firmware unopened"],
       "summary": "The install processor whose control surface is half published. Allen & Heath document levels, mutes, routing crosspoints, preset recall and source selection — and nothing at all for EQ, delay, dynamics or metering. The other half lives in System Manager's own protocol and in its configuration files, and only the files have been opened.",
       "headline": "A `.cfg` system file is gzip → tar, and the model is carried by the *filename* of a zero-byte member. Inside, `CurrentSettings.dat` names the entire per-zone chain in plain text — delay, parametric EQ, xGEQ, GEQ-PEQ, compressor and side chain, insert, limiter, allpass — and not one of those blocks' field layouts is decoded. No firmware image has been opened and the silicon is unknown.",
-      "method": "Static analysis of files that ship inside AHM System Manager 1.61 on macOS — the six factory `.cfg` configs from `FactoryConfigs{,16,32}/` — cross-read against Allen & Heath's published *AHM TCP/IP Protocol V1.0*. No AHM hardware was involved: none is available and none is expected, so every method has to work from files alone. The firmware images in the System Manager bundle have not been opened. Protocol behaviour was exercised only against our own simulator built from the same published document, which demonstrates self-consistency and not hardware compatibility.",
+      "method": "Static analysis of files that ship inside AHM System Manager 1.61 on macOS — the six factory `.cfg` configs from `FactoryConfigs{,16,32}/` — cross-read against Allen & Heath's published *AHM TCP/IP Protocol V1.4*. No AHM hardware was involved: none is available and none is expected, so every method has to work from files alone. The firmware images in the System Manager bundle have not been opened. Protocol behaviour was exercised only against our own simulator built from the same published document, which demonstrates self-consistency and not hardware compatibility.",
       "artifacts": [
         "`AHM System Manager 1.61` (macOS) — a Qt 6 application, licensed and installed on our own machine; no Allen & Heath file is redistributed",
         "Six factory configs — `AHM-16/32/64 Default.cfg` and `AHM-16/32/64 Empty.cfg`, format version `V1.6X - Rev. 92182 - Build. 30`",
         "`Firmware.tar.xz` (26 MB) and `IP1/IP4/IP6Firmware.bin` (~440 KB each), present in the System Manager bundle — referenced only; neither opened",
-        "*AHM TCP/IP Protocol V1.0* — Allen & Heath's published specification"
+        "*AHM TCP/IP Protocol V1.4* — Allen & Heath's published specification"
       ],
       "hardware": [
         { "label": "Model range", "value": "One platform in three sizes — AHM-16, AHM-32, AHM-64. `Mixer.cfg` geometry scales exactly with the model across all six factory configs: the mono/stereo pairing maps are N/2 characters and the two fixed lines are N and N/2 long for N = 16, 32, 64. The geometry is what confirms the size, not the badge", "confidence": "verified" },
@@ -632,8 +632,8 @@
         { "label": "Parameter blobs", "value": "`CurrentSettings.dat` and `Scene1.dat` are a fixed-layout struct dump, not a tagged format. Sizes differ between Default and Empty for the same model — 543,794 vs 567,365 bytes for the AHM-64's `CurrentSettings.dat` — so the blobs are not a fixed-size image and carry length-varying content, most plausibly name and label regions", "confidence": "verified" },
         { "label": "Named processing chain", "value": "The blobs store their block labels inline, which gives the per-zone parameter model for free: `Mix Delay`, `Parametric EQ`, `xGEQ`, `GEQ-PEQ`, `Compressor`, `Compressor side chain`, `Insert`, `Limiter`, `Allpass EQ`, and `Source Select Controller`. Every block worth targeting is named. Not one field layout inside them is decoded", "confidence": "verified" },
         { "label": "Record strides", "value": "In the AHM-64 Default file the input-unit records begin at `0x834A` on a 38-byte stride, and the source-selector slots are on a 17-byte stride. The zone-processing labels that follow sit at irregular offsets, and the gap to the next label bounds each block's payload: 25 bytes after `Mix Delay`, 250 after `Parametric EQ`, 635 after `xGEQ`, 245 after `GEQ-PEQ`, 137 after `Compressor`, 21 after `Insert`, 27 after `Limiter`", "confidence": "verified" },
-        { "label": "Published control protocol", "value": "*AHM TCP/IP Protocol V1.0* is SysEx over TCP under the `00 00 1A` Allen & Heath manufacturer ID. Strips are addressed as a MIDI channel plus note number — inputs on channel 0, zones on 1, control groups on 2 — with messages for mute, level, level increment, send level and send mute, preset recall, audio playback and source select. The source-select reply adds a colour byte and an ASCII name", "confidence": "public" },
-        { "label": "What the protocol omits", "value": "There is no published message for PEQ, GEQ, delay, compressor, limiter or metering, and no way to read a channel or preset name back. The published surface is levels, mutes, routing crosspoints, preset recall and source selection, and it stops there. Everything else travels over AHM System Manager's own protocol, which Allen & Heath do not publish", "confidence": "public" },
+        { "label": "Published control protocol", "value": "*AHM TCP/IP Protocol V1.4* is SysEx over TCP under the `00 00 1A` Allen & Heath manufacturer ID. Strips are addressed as a MIDI channel plus note number — inputs on channel 0, zones on 1, control groups on 2 — with messages for mute, level, level increment, send level and send mute, preset recall, audio playback and source select. The source-select reply adds a colour byte and an ASCII name", "confidence": "public" },
+        { "label": "What the protocol omits", "value": "There is still no published message for PEQ, GEQ, delay, compressor, limiter or metering. But the surface has grown since this entry first described it against V1.0: the current revision (**V1.4**) adds input **preamp gain** — documented as 5 dB to +60 dB mapped across 00–7F — with pad and phantom on the same channel-select / parameter-select scheme. So levels, mutes, routing crosspoints, preset recall, source selection *and the preamp* are now published, and only the per-zone processing blocks are not; everything beyond them still travels over AHM System Manager's own unpublished protocol. None of the V1.4 preamp additions has been confirmed against an AHM", "confidence": "public" },
         { "label": "Level curve", "value": "`LV = floor(((dB + 48) / 58) × 127)`, covering −48 dB to +10 dB in a single 7-bit byte, with `0x69` (105) at unity. It truncates; it does not round, and the manufacturer's own reference table only reproduces under truncation", "confidence": "public" },
         { "label": "Verification basis", "value": "The protocol implementation is exercised against a simulator built from the same published document. That demonstrates the two agree with each other; it is not hardware verification, and nothing on this page has been confirmed against an AHM", "confidence": "verified" }
       ],
@@ -1290,7 +1290,7 @@
 
     {
       "id": "analog-way-midra",
-      "updated": "2026-09-06",
+      "updated": "2026-10-19",
       "manufacturer": "Analog Way",
       "model": "Midra series",
       "family": "Midra",
@@ -1333,11 +1333,12 @@
         { "label": "Control protocol", "value": "A terse ASCII protocol on **TCP 10500**, and it is asymmetric: an outbound command puts the mnemonic **last** (`1,2,5PMinp` sets, `1,2,PMinp` requests) while the device's reply puts it **first** (`PMinp1,2,5`), with the final comma-separated field as the value. Midra's client appends CRLF itself; the device answers CRLF. Mnemonics are five characters, with three debug specials whose request and answer differ — `?`→`DEV`, `@`→`ADBG`, `>`→`DDBG`", "confidence": "measured" },
         { "label": "The variable table", "value": "562 variables in 49 groups, 190 of them read-only status. Every one declares its own dimension list, minimum, maximum and default — but those are the **vendor's declarations**, read out of the client, not limits anyone has measured. Treat them as strong hints; the device is the authority", "confidence": "verified" },
         { "label": "Device identity on the wire", "value": "Midra has no `PDEV` — asking for it draws `E10`. It **pushes `DEV` on connect** (259 on our Pulse2) and answers `DIdsn` serial (2165), `VEvar` version (13) and `DIdre` reference (240215). A Midra model map keys on `DEV`; the LiveCore generation's keys on `PDEV`, and a client that assumes one shape sees the other generation as a dead socket", "confidence": "measured" },
-        { "label": "Screen and layer model, as a Pulse2 reports it", "value": "Up to **2 screens**; `SCmly` maximum layers is read-only 0–4 and reads 2 for screen 0 on this unit; layers are indexed `[screen(2), ctx(3), layer(8)]`; `INava[10]` available inputs reads 8. Geometry carries the **same +32768 centre bias as LiveCore** — a centred 1080p layer reads `PRpoh=33728, PRpov=33308, PRsih=1920, PRsiv=1080` — so the two generations share their positioning arithmetic even where they share no mnemonics", "confidence": "measured" },
+        { "label": "Screen and layer model, as a Pulse2 reports it", "value": "Up to **2 screens**; `SCmly` maximum layers is read-only 0–4 and reads 2 for screen 0 on this unit; layers are indexed `[screen(2), ctx(3), layer(8)]`; `INava[10]` available inputs reads 8. The two layers a Pulse2 reports are the **frame layer and a single PiP** — the full model is frame, PiP 1–4, logo 1–2 and audio, and `SCmly`=2 is which of those this unit actually offers. Geometry carries the **same +32768 centre bias as LiveCore** — a centred 1080p layer reads `PRpoh=33728, PRpov=33308, PRsih=1920, PRsiv=1080` — so the two generations share their positioning arithmetic even where they share no mnemonics", "confidence": "measured" },
         { "label": "Take and layout verbs", "value": "`GCtak[screen]` takes one screen, `GCtal` takes all, `GCtba` is the T-bar, with `GCtav`/`GCtio` as status. `GCqly[screen,ctx]` applies one of **27 built-in layouts** and reads back 0, because it is a momentary trigger rather than stored state, and it sets geometry only — sources are assigned separately. There is no selected-layer variable at all, which is a Midra/LiveCore difference", "confidence": "measured" },
         { "label": "Programme is protected; preview is not", "value": "Geometry writes are accepted, echoed back and raise `GCtav` (TAKE_AVAILABLE): the device holds the edit as a **pending change** until a take commits it. A source write aimed at the programme context is echoed back as the **old** value with a `CTsto` pulse — the device declines it. The vendor client's own path, captured through the proxy, writes the source to the **preview** context with preset-update-mode on; a programme-context edit re-baselined with `PIwur` sticks too. Both were confirmed on the unit", "confidence": "measured" },
         { "label": "Memory model", "value": "Eight preset slots. `PMpst[slot]` is the used flag and the stored content is readable per slot but not writable — a direct write to stored content reverts the same way a protected live write does. Save and erase are request variables. **Recall is not a device command at all**: the vendor client reads the stored slot and re-applies it to the live preset, so on this generation a memory recall is client-side arithmetic, and any controller that expects a one-command recall is waiting for a reply that never comes", "confidence": "measured" },
-        { "label": "HTTP surface", "value": "The device serves HTTP on port 80 alongside the control socket, including per-input thumbnails as BMPs cache-busted by timestamp (`/assets/Snapshots/capture_in_8.bmp?time=…`). Source previews in a third-party controller cost nothing to build", "confidence": "measured" }
+        { "label": "Ancestor protocol — PLS300", "value": "The scheme predates the Midra. Analog Way's *Programmer's Guide for PLS300* (2009) describes the same terse ASCII protocol on the same framing — device code `DEV` 78, case-sensitive one- and two-letter mnemonics, no outbound line terminator — with one extra error code the later platforms dropped: `E11`, an index of the right count but out of range. No PLS300 has ever answered us, so this is read from the published guide, not off the wire", "confidence": "public" },
+        { "label": "HTTP surface", "value": "None. A Pulse2 serves nothing on port 80 — the connection is refused — so this generation has no web thumbnail surface at all. The per-input `capture_in_N` BMP thumbnails are a **LiveCore** feature; a Midra does not have them, and a source-preview panel that works against a NeXtage has nothing to fetch here", "confidence": "measured" }
       ],
       "security": [
         { "label": "Image signing", "value": "None. No RSA, SHA, AES, HMAC or ECDSA string appears in either image, and every firmware component ships as plaintext Intel HEX — no container, no compression, no obfuscation", "confidence": "verified" },
@@ -1369,13 +1370,14 @@
         "Reading \"one firmware package\" as \"one machine\". The single-image evidence proves the software is common across the family; the very same package also carries two entirely different MCU applications for two different I/O boards. Stopping at the first conclusion would have missed the `-H` platform completely.",
         "The vendor's own update log inside the package is the most valuable file in it and looks like debris. It is the only record here of a physical unit's responses — which device type it reported, and which of the eighteen EDID positions actually existed.",
         "Reading the first reverting writes as a locked device. A source write to a layer comes back as the old value, which looked like the device refusing remote source assignment outright — and this entry nearly said so. It was two separate things: the programme context is protected while the preview context is not, and the device declines to place an input carrying no signal on a layer, so with nothing patched in every real input reverts while an always-available internal source sticks. The mechanism was right the whole time; the test was wrong twice over.",
-        "Putting a comma before the mnemonic on a set. `1,2,5PMinp` sets the variable; `1,2,5,PMinp` is read as a *get* of an over-indexed variable and is silently ignored or answered `E13`. The value is glued to the mnemonic with no separator, which reads like a typo and is the protocol."
+        "Putting a comma before the mnemonic on a set. `1,2,5PMinp` sets the variable; `1,2,5,PMinp` is read as a *get* of an over-indexed variable and is silently ignored or answered `E13`. The value is glued to the mnemonic with no separator, which reads like a typo and is the protocol.",
+        "Attributing a LiveCore feature to the Midra. This page once carried a `measured` HTTP-thumbnail row here, citing `/assets/Snapshots/capture_in_8.bmp`. A Pulse2 in fact refuses port 80 outright; the per-input thumbnails it was describing are the LiveCore generation's, served from a NeXtage. A `measured` label records where a reading was taken — it still has to be filed against the platform the reading actually came from."
       ]
     },
 
     {
       "id": "analog-way-livecore",
-      "updated": "2026-09-06",
+      "updated": "2026-10-19",
       "manufacturer": "Analog Way",
       "model": "LiveCore",
       "family": "LiveCore (Ascender / NeXtage / SmartMatriX Ultra)",
@@ -1420,7 +1422,9 @@
         { "label": "Memory contents are directly addressable", "value": "`PM*` mirrors the live `PR*` fields but is indexed `[slot(0..143), layer(0..23)]`, so the **contents of a stored memory** can be read and written without touching the live arrangement — per-slot metadata included, where stored content width is non-zero exactly when the slot is used. Save snapshots `PR[screen, ctx0, *]` into `PM[slot, *]`; load writes it back into `ctx0` only; a third verb is load-and-take. The round trip was proven both ways", "confidence": "measured" },
         { "label": "Selection is not visibility", "value": "The selected-layer variable tracks what the panel has selected and does **not** change what is on air, with or without a take — and it is correctly absent from the memory shadow, because a memory stores what each layer shows and never which layer someone had selected. Any client using it as a show/hide toggle is wrong, and appears to work until someone watches the output", "confidence": "measured" },
         { "label": "Take verbs", "value": "Take-up, take-down, take-force and a T-bar, with up and down times — indexed by **group** `[0..15]` rather than by screen, a screen with no grouping being its own group. The per-layer status variables report small stable enums (3 or 4 for a used layer, 0 for an empty one) that did not flip under a take, so they are not an on-air flag whatever their names suggest", "confidence": "measured" },
-        { "label": "The appliance has to be given its cards", "value": "A simulator session created with empty options yields a device with **no I/O cards fitted**: every input and output reads unavailable, every screen allocates zero layers, and nothing — layers, takes, memory saves — has any effect. Passing each slot's option id from the device's own descriptor fits the cards, and the same device then comes up with its inputs available, its outputs enabled and its full control surface live", "confidence": "verified" }
+        { "label": "The appliance has to be given its cards", "value": "A simulator session created with empty options yields a device with **no I/O cards fitted**: every input and output reads unavailable, every screen allocates zero layers, and nothing — layers, takes, memory saves — has any effect. Passing each slot's option id from the device's own descriptor fits the cards, and the same device then comes up with its inputs available, its outputs enabled and its full control surface live", "confidence": "verified" },
+        { "label": "HTTP thumbnails — inputs only", "value": "The NeXtage serves HTTP on port 80 and offers per-input snapshot thumbnails as `capture_in_N` images, cache-busted by a tick — and **only** inputs: outputs, stills and the multiviewer have none. This is the thumbnail surface the Midra generation lacks entirely, since a Pulse2 refuses port 80, so a source-preview panel is cheap against a NeXtage and impossible against a Pulse2", "confidence": "measured" },
+        { "label": "Multiviewer geometry and memories", "value": "The monitoring multiviewer places each widget with the **same +32768 centre bias** as the layer geometry; a layout is committed with `MLupd` and cleared with `MLres`, and there are eight layout memories. The save and load verbs **transpose their indices** — `MMsav[out, mem]` against `MMloa[mem, out]` — so a controller that reuses one index order for both silently writes or recalls the wrong slot", "confidence": "measured" }
       ],
       "security": [
         { "label": "Update package", "value": "AES-encrypted. Entropy 7.9998 bits/byte from byte zero, length an exact multiple of 16, and **zero repeated 16-byte blocks in 64 MB** — so a chaining or counter mode, not ECB. No header, no magic, no version field in the clear", "confidence": "verified" },
@@ -1458,7 +1462,7 @@
 
     {
       "id": "analog-way-livepremier",
-      "updated": "2026-09-06",
+      "updated": "2026-10-19",
       "manufacturer": "Analog Way",
       "model": "LivePremier / Aquilon",
       "family": "LivePremier (Aquilon RS / C)",
@@ -1511,7 +1515,8 @@
         { "label": "An empty memory is answered with silence", "value": "Recalling a populated slot echoes the request and then reports loading and the new preset id. Recalling an empty one echoes the request and says nothing further, ever — not refused, not reported. The tell is that the loading flag never appears, so anything reporting success from the echo alone is lying. Reproduced identically on the simulator and on the Aquilon", "confidence": "measured" },
         { "label": "Preview and programme are not buffers", "value": "Control paths use PREVIEW and PROGRAM; status reports `A`, `B` and `C`. The device keeps three fixed buffers and the names float across them as takes swap which is which — on one recall pass on the Aquilon, screen 1 landed on `A` while screens 2, 3 and 4 landed on `B` at the same moment. There is no \"preview is B\" to hard-code anywhere; resolving a buffer needs the current take state. Structurally the same model as the LiveCore generation's three preset contexts", "confidence": "measured" },
         { "label": "The VPU mixer model", "value": "A VPU mixer is the physical mixing and scaling resource the device allocates to a (screen, layer) pair: four processors of sixteen, **64 in a full chassis**, and most chassis are part-populated — ours reports 32 fitted and 28 enabled, each tagged with its capability, its screen, its layer and its slice. A layer too wide for one mixer is split across several, one slice each, which is why an eight-slice native layer can consume an entire processor board and why counting layers never tells you whether a configuration will fit. The device reports the map read-only and keeps two copies of it, running and staged", "confidence": "measured" },
-        { "label": "Pipes are not links", "value": "Each mixer reports which output pipe it is wired to and which of the screen's output links that pipe carries, and the two disagree on purpose: **pipes are interleaved** — a six-output screen's first mixer sits on pipes 1, 3, 5 and 7 — while the screen's own links are contiguous. Reading the pipe number as a link number draws a chassis map that is plausible and wrong", "confidence": "measured" }
+        { "label": "Pipes are not links", "value": "Each mixer reports which output pipe it is wired to and which of the screen's output links that pipe carries, and the two disagree on purpose: **pipes are interleaved** — a six-output screen's first mixer sits on pipes 1, 3, 5 and 7 — while the screen's own links are contiguous. Reading the pipe number as a link number draws a chassis map that is plausible and wrong", "confidence": "measured" },
+        { "label": "The mixer map is firmware-specific (read on 6.2.73)", "value": "Everything above was read on firmware 6.2.73. On an Aquilon **RS4 running 6.1.60**, `$vpuMixer` answers `E12` and the `pipe` and `vpuLayer` collections sit at their enum defaults — the box reports no mixer map at all. What it reports instead is each screen's own layer capability plus the staged room left in the chassis, the same per-screen figures the 6.2.73 store also carries. So a controller that reads the mixer map to decide whether a configuration will fit finds nothing to read on the earlier firmware and has to fall back to per-screen capability — and the VPU rows above should be read as true of 6.2, not of the platform for all time. Read on a show RS4 that is not ours and corroborated on the 6.1.60 simulator, so verified rather than measured", "confidence": "verified" }
       ],
       "security": [
         { "label": "Update package", "value": "AES-encrypted, same construction as the LiveCore packages — 7.9998 bits/byte from byte zero, length an exact multiple of 16, no repeated 16-byte blocks in 64 MB", "confidence": "verified" },
@@ -1549,7 +1554,7 @@
     },
     {
       "id": "blackmagic-atem",
-      "updated": "2026-10-04",
+      "updated": "2026-10-19",
       "manufacturer": "Blackmagic Design",
       "model": "ATEM (switcher family)",
       "family": "ATEM — Production/Television Studio, Constellation, Mini/SDI",
@@ -1617,7 +1622,7 @@
         },
         {
           "label": "Network / discovery",
-          "value": "Switchers advertise over **mDNS/Bonjour** as `_blackmagic._tcp` and the firmware carries its own `mDNS Atem` responder; control is IP/UDP (the SDK connects to an IP address, not a USB path)",
+          "value": "Switchers advertise over **mDNS/Bonjour** as `_blackmagic._tcp` and the firmware carries its own `mDNS Atem` responder; control is IP/UDP — the SDK connects to an IP address — and on the USB frames that IP reaches the switcher over the host USB-C port, which carries a USB-NCM Ethernet gadget rather than a bespoke USB control path (see the measured row below). So \"not a USB path\" is only true of the wire format, not of the cable",
           "confidence": "verified"
         }
       ],
@@ -1650,6 +1655,11 @@
         {
           "label": "Read from a live unit",
           "value": "An **ATEM Mini Extreme ISO** on our own bench answers the documented UDP state-sync and reports **protocol version 9.6**, model enum **17** and **29 inputs**, its state dump carrying exactly the clear-text attribute names (`ProgramInput`, `AuxSource`, …) the static analysis predicted. This is the first reading on this page taken off a running ATEM rather than from the installer",
+          "confidence": "measured"
+        },
+        {
+          "label": "The USB-C port carries IP, not a bespoke control path",
+          "value": "Read off the same bench unit on a second pass — read-only `ioreg`, 2026-10-03. In normal running it enumerates as VID `0x1EDB` / PID `0xBE83` at **USB 2.0 High Speed** (`bcdUSB 0x0210`; the `USBSpeed=3` field is a red herring, not SuperSpeed), and its USB composite is **CDC + NCM + UVC video + UAC audio + a Blackmagic vendor-control interface**. The NCM data interface comes up as a point-to-point `/30` Ethernet-over-USB link with open **TCP 80 (HTTP), 9990 and 9993** and everything else closed — so the ATEM's own IP control plane is reachable over the USB-C cable itself. That is what the discovery row above means by qualifying \"not a USB path\"",
           "confidence": "measured"
         }
       ],
@@ -2070,7 +2080,7 @@
     },
     {
       "id": "pixelhue-u5-series",
-      "updated": "2026-09-23",
+      "updated": "2026-10-19",
       "manufacturer": "Pixelhue",
       "model": "U5 / U5 Pro / U5 mini event controllers",
       "family": "U-series event controllers — U5, U5 Pro, U5 mini and the older U3",
@@ -2187,6 +2197,11 @@
         {
           "label": "Model ids",
           "value": "U3 29698 / 29699, U5 29701, U5 Pro 29703, U5 mini 29711 — alongside the switchers the same stack drives (P10 28945, P20 28944, P80 30006, Q8 29974)",
+          "confidence": "verified"
+        },
+        {
+          "label": "The U5 mini's key map, from the firmware",
+          "value": "The mini's layout is readable from `key_mini.xml` (V1.0.3) in the shape `UCenter` answers for `GET key/active-custom`. Unlike the U5 and U5 Pro it has **no faders and no encoders** — its surface is the key grid and the T-bar — with a SHIFT layer turning part of the grid into the numeric keypad. Its key codes have not been checked against a running mini; only the U5's 87 keys were, against a live `UCenter`, on 2026-10-16. So this layout is read from the vendor file, not off the wire",
           "confidence": "verified"
         }
       ],
