@@ -7,7 +7,7 @@ Read this before editing. See `README.md` for what the project *is*.
 
 **Verified in this repo:**
 
-- The site builds clean (27 routes, 26 in the sitemap) and every route renders.
+- The site builds clean (30 routes, 29 in the sitemap, as of 2026-10-29) and every route renders.
 - Search, status filter, class filter and all six sort orders were exercised in a real
   browser and produce correct results — including the year sort parking the undated entry
   (LOOM) last in both directions.
@@ -35,7 +35,7 @@ Read this before editing. See `README.md` for what the project *is*.
   static assets (not a Pages project — the fleet has none). Public repo at
   `github.com/stoatworks-labs/aux-opsy`.
 - Discovery stack verified at build: `/robots.txt` with content signals, `/sitemap-index.xml`
-  (26 URLs, and the non-HTML routes correctly excluded), `/llms.txt`, `/llms-full.txt`,
+  (29 URLs as of 2026-10-29, and the non-HTML routes correctly excluded), `/llms.txt`, `/llms-full.txt`,
   `/api/platforms.json`, `/updates.xml` (parses as Atom), and JSON-LD on every page —
   `Dataset` + `ItemList` on the index, `TechArticle` + `BreadcrumbList` on each platform,
   `DefinedTermSet` for the confidence vocabulary on `/method/`.
@@ -83,6 +83,10 @@ here.** When the research moves, this file has to be edited by hand.
    - **Owning a unit does not retroactively upgrade the static analysis.** On the BirdDog page
      the file-derived rows stay `verified` and the FPGA models stay file-only. Sweeping a
      whole entry to `measured` because a unit exists is the exact failure this label invites.
+   - **Hardware on our bench that isn't ours is not `measured` either.** The d&b Remote network
+     entry (2026-10-29) comes from a session with two D20s that were not ours, through our own
+     CANary gateway. Its bench rows are `verified`, read from the retained capture, and it
+     carries no `hardwareBasis`.
 4. **`traps` are not decoration.** They record mistakes the analysis actually made, each of
    which produced a *plausible* wrong answer. They are the most useful section on the page for
    a reader repeating the work. Do not drop them in a tidy-up.

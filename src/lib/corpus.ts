@@ -70,6 +70,7 @@ const STRANDS: [RegExp, string][] = [
   [/conference/i, 'conference systems'],
   [/system processor|networked audio|audio-over-ethernet/i, 'installed audio systems'],
   [/wireless microphone|microphone system/i, 'wireless microphone systems'],
+  [/amplifier/i, 'amplifier control networks'],
 ];
 
 /** Which strand a single class belongs to, or the class itself if unmapped. */
