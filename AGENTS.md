@@ -86,7 +86,10 @@ here.** When the research moves, this file has to be edited by hand.
    - **Hardware on our bench that isn't ours is not `measured` either.** The d&b Remote network
      entry (2026-10-29) comes from a session with two D20s that were not ours, through our own
      CANary gateway. Its bench rows are `verified`, read from the retained capture, and it
-     carries no `hardwareBasis`.
+     carries no `hardwareBasis`. It carries a **`hardwareNote`** instead, which fills the page's
+     hardware line and `/method/`'s column and counts as "connected to" in `/method/`'s
+     warning, so neither says "every finding came out of a file" — but it never unlocks
+     `measured` and is not counted as hardware in our hands.
 4. **`traps` are not decoration.** They record mistakes the analysis actually made, each of
    which produced a *plausible* wrong answer. They are the most useful section on the page for
    a reader repeating the work. Do not drop them in a tidy-up.

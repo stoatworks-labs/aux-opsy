@@ -17,6 +17,9 @@ const hasFindings = p.hardware.length > 0 || p.software.length > 0;
 // `openProjects` is optional — most platforms have no third-party open project
 // on them, and the section collapses away entirely when the array is absent.
 const openProjects = p.openProjects ?? [];
+// Said from the entries rather than assumed: the note once read "GPL-3.0" for every
+// page, and the d&b entry's NanoOcp is LGPL-3.0.
+const licences = [...new Set(openProjects.map((o) => o.licence))].join(' and ');
 
 const sections = [
   ['summary', 'Summary'],
@@ -153,7 +156,9 @@ const schema = [
             of the page is worth. */}
         {p.hardwareBasis
           ? <><strong>Hardware in our hands:</strong> {p.hardwareBasis}</>
-          : <><strong>Hardware in our hands:</strong> none — every finding below came out of a file.</>}
+          : p.hardwareNote
+            ? <><strong>Hardware involved, not ours:</strong> {p.hardwareNote}</>
+            : <><strong>Hardware in our hands:</strong> none — every finding below came out of a file.</>}
         {p.updated && <> · Last updated <time datetime={p.updated}>{p.updated}</time></>}
       </p>
     </div>
@@ -339,7 +344,7 @@ const schema = [
               </div>
             ))}
             <p class="prose" style="color:var(--ink-2);font-size:.93rem">
-              Licence note: these projects are GPL-3.0. Facts about them — part numbers,
+              Licence note: {openProjects.length === 1 ? 'this project is' : 'these projects are'} {licences}. Facts about them — part numbers,
               what boots, what does not — are not copyrightable and are recorded freely.
               Their source is not a source for our own differently-licensed work, and no code
               from them is used in it.

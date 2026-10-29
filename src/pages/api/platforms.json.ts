@@ -42,6 +42,7 @@ export const GET: APIRoute = () => {
       ...p,
       url: `${SITE}/platforms/${p.id}/`,
       hardwareBasis: (p as { hardwareBasis?: string }).hardwareBasis ?? null,
+      hardwareNote: (p as { hardwareNote?: string }).hardwareNote ?? null,
     })),
   };
 

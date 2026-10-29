@@ -61,6 +61,10 @@ Edit `src/data/platforms.json` and nothing else. Each entry needs:
   involved" column on `/method/`, and its presence is what unlocks the `measured` confidence
   label on that entry's rows. Leaving it off is the correct default; adding it falsely is the
   worst edit anyone could make to this repo.
+- **`hardwareNote`**: *optional, rarer still.* Hardware that was involved but wasn't mine (the
+  d&b entry's session with two amplifiers that weren't). It fills the same column and the
+  page's hardware line, and counts as a device connected to on `/method/`, but it never
+  unlocks `measured`. Its rows are `verified` from whatever was captured.
 - **`class`**: free text, but check `STRANDS` in `src/lib/corpus.ts` before inventing one. An
   unrecognised class is appended to the site's own self-description verbatim, which is safe
   but reads badly.

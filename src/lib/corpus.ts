@@ -12,6 +12,7 @@ export const SITE = 'https://aux-opsy.com';
 type Row = { label: string; value: string; confidence: string };
 type Platform = (typeof data.platforms)[number] & {
   hardwareBasis?: string;
+  hardwareNote?: string;
   control?: Row[];
   openProjects?: { name: string; url: string; licence: string; activity: string; what: string; points: string[] }[];
 };
@@ -184,7 +185,11 @@ export function brief(p: Platform): string[] {
     `- Class: ${p.class}`,
     `- Research status: ${statusLabel(p.status)}`,
     `- Last updated: ${p.updated}`,
-    `- Hardware in our hands: ${p.hardwareBasis ?? 'none — analysis is file-derived'}`,
+    p.hardwareBasis
+      ? `- Hardware in our hands: ${p.hardwareBasis}`
+      : p.hardwareNote
+        ? `- Hardware involved, not ours (nothing labelled measured): ${p.hardwareNote}`
+        : '- Hardware in our hands: none — analysis is file-derived',
     `- Summary: ${plain(p.summary)}`,
   ];
   if (p.headline) lines.push(`- Key finding: ${plain(p.headline)}`);

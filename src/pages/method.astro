@@ -11,6 +11,11 @@ const analysed = platforms.filter((p) => p.status !== 'candidate' && p.status !=
 // row that says nothing. The platforms that DO have one are named in the prose
 // below, so the exception can never quietly grow without the page admitting it.
 const onHardware = analysed.filter((p) => p.hardwareBasis);
+// `hardwareNote` is hardware that was involved but not ours (the d&b entry's borrowed
+// bench). It counts as a device connected to, so the warning below stays true, and it
+// fills the column, but it never unlocks Measured and is not "in our hands".
+const notOurs = analysed.filter((p) => !p.hardwareBasis && p.hardwareNote);
+const touched = onHardware.length + notOurs.length;
 
 const site = Astro.site.href.replace(/\/$/, '');
 const pageUrl = `${site}/method/`;
@@ -179,7 +184,7 @@ const schema = [
                   <tr>
                     <td class="k"><a href={`/platforms/${p.id}/`}>{p.manufacturer} {p.model}</a></td>
                     <td>{p.method}</td>
-                    <td>{p.hardwareBasis ?? 'None'}</td>
+                    <td>{p.hardwareBasis ?? (p.hardwareNote ? `Not ours: ${p.hardwareNote}` : 'None')}</td>
                   </tr>
                 ))}
               </tbody>
@@ -188,7 +193,7 @@ const schema = [
 
           <div class="note warn">
             <p style="margin:0">
-              <strong>On all but {spell(onHardware.length)} of the
+              <strong>On all but {spell(touched)} of the
               platforms above, no device has ever been opened, connected to or
               modified</strong>{' '}— the third column says so per platform, and where it says <em>None</em> every
               finding on that page came out of a file. Nothing on this site should be relied on
@@ -215,6 +220,20 @@ const schema = [
             file-derived and still labelled accordingly. Buying a unit does not retroactively
             verify the static analysis.
           </p>
+          {notOurs.length > 0 && (
+            <p>
+              Hardware that was not ours is recorded too, and labelled differently:
+              {' '}{notOurs.map((p, i) => (
+                <>
+                  {i > 0 && (i === notOurs.length - 1 ? ' and ' : ', ')}
+                  <a href={`/platforms/${p.id}/`}>{p.manufacturer} {p.model}</a>
+                </>
+              ))}
+              {' '}came partly from a live session with devices we do not own. Those rows are
+              labelled Verified, read from the retained capture, and nothing on
+              {' '}{notOurs.length === 1 ? 'that page' : 'those pages'} is labelled Measured.
+            </p>
+          )}
         </section>
 
         <section id="terms">

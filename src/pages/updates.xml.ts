@@ -26,7 +26,9 @@ export const GET: APIRoute = () => {
       `Research status: ${statusLabel(p.status)}.`,
       (p as { hardwareBasis?: string }).hardwareBasis
         ? `Hardware in our hands: ${(p as { hardwareBasis?: string }).hardwareBasis}.`
-        : 'No hardware involved — analysis is derived from files.',
+        : (p as { hardwareNote?: string }).hardwareNote
+          ? `Hardware involved, not ours: ${(p as { hardwareNote?: string }).hardwareNote}`
+          : 'No hardware involved — analysis is derived from files.',
     ]
       .filter(Boolean)
       .join(' ');
